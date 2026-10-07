@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "srsma-test-prep",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-01-01",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "COOKIE_SECURE": "true",
+    "DISABLE_SWEEP_TIMER": "true",
+    "NEXT_PUBLIC_GA_MEASUREMENT_ID": "G-D36DLF1HJX",
+    "WHATSAPP_TEMPLATE_NAME": "otp",
+    "WHATSAPP_TEMPLATE_LANGUAGE": "en",
+    "ENABLE_DEV_OTP_MOCK": "false"
+  }
+}

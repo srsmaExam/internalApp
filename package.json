@@ -8,6 +8,9 @@
     "dev": "next dev",
     "prebuild": "node scripts/copy-pdf-worker.mjs && node scripts/check-tokens.mjs",
     "build": "next build",
+    "build:cloudflare": "opennextjs-cloudflare build",
+    "preview:cloudflare": "opennextjs-cloudflare preview",
+    "deploy:cloudflare": "opennextjs-cloudflare deploy",
     "start": "next start",
     "migrate": "tsx scripts/migrate.ts",
     "seed": "tsx scripts/seed.ts",
@@ -53,6 +56,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@next/eslint-plugin-next": "^16.3.3",
+    "@opennextjs/cloudflare": "^1.20.9",
     "@tailwindcss/postcss": "^4.1.14",
     "@types/katex": "^0.16.7",
     "@types/node": "^22.18.8",
@@ -67,6 +71,7 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.68.0",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "wrangler": "^4.148.0"
   }
 }

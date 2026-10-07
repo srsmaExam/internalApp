@@ -466,7 +466,7 @@ export function StudentAnalyticsClient({
     <div className="mx-auto max-w-5xl space-y-6 pb-12">
       {/* Sample Preview Banner */}
       {isSampleMode && (
-        <div className="no-print flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50/90 p-4 text-xs shadow-sm dark:border-amber-800/80 dark:bg-amber-950/40">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50/90 p-4 text-xs shadow-sm dark:border-amber-800/80 dark:bg-amber-950/40">
           <div className="flex items-center gap-2.5">
             <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500 text-white font-bold">
               ★
@@ -519,7 +519,7 @@ export function StudentAnalyticsClient({
 
           {/* Direct to Solutions CTA at the end of the reports tab */}
           {(paramAttemptId || data.recentTests?.[0]?.attemptId) && (
-            <div className="no-print mt-8 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-50/90 via-indigo-50/70 to-blue-50/90 p-5 sm:p-7 shadow-sm dark:border-brand-800/60 dark:bg-gradient-to-r dark:from-slate-900/90 dark:via-brand-950/40 dark:to-slate-900/90">
+            <div className="mt-8 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-50/90 via-indigo-50/70 to-blue-50/90 p-5 sm:p-7 shadow-sm dark:border-brand-800/60 dark:bg-gradient-to-r dark:from-slate-900/90 dark:via-brand-950/40 dark:to-slate-900/90">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="space-y-1">
                   <div className="inline-flex items-center gap-1.5 rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-bold text-brand-800 dark:bg-brand-900/60 dark:text-brand-300">

@@ -99,7 +99,7 @@ export function DiagnosticFeedbackWidget({
   return (
     <div
       id="feedback-section"
-      className={`no-print mx-auto max-w-5xl w-full rounded-3xl border-2 border-amber-400/90 bg-gradient-to-br from-amber-50/95 via-amber-50/40 to-yellow-50/70 p-5 sm:p-7 md:p-8 shadow-lg shadow-amber-500/10 transition dark:border-amber-500/70 dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900/95 dark:to-amber-950/40 ${className}`}
+      className={`mx-auto max-w-5xl w-full rounded-3xl border-2 border-amber-400/90 bg-gradient-to-br from-amber-50/95 via-amber-50/40 to-yellow-50/70 p-5 sm:p-7 md:p-8 shadow-lg shadow-amber-500/10 transition dark:border-amber-500/70 dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900/95 dark:to-amber-950/40 ${className}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">

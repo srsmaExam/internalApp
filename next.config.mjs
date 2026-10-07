@@ -28,9 +28,15 @@ const nextConfig = {
       '**/*.md',
     ],
   },
+  outputFileTracingIncludes: {
+    '/*': ['./node_modules/next/dist/lib/metadata/**'],
+  },
   experimental: {
     largePageDataBytes: 512 * 1024,
   },
 };
+
+import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
+initOpenNextCloudflareForDev();
 
 export default nextConfig;

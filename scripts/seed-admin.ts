@@ -15,6 +15,19 @@
  *   npm run seed:admin
  *   ADMIN_USERNAME="Director" ADMIN_PASSWORD="SecurePass2026!" npm run seed:admin
  */
+import fs from 'node:fs';
+import path from 'node:path';
+
+// Load .env if present
+const envPath = path.resolve(process.cwd(), '.env');
+if (fs.existsSync(envPath) && typeof process.loadEnvFile === 'function') {
+  try {
+    process.loadEnvFile(envPath);
+  } catch {
+    // Ignore if already loaded or invalid
+  }
+}
+
 import { sql } from 'drizzle-orm';
 import { getDb, closeDb } from '../src/db/client';
 import { profiles } from '../src/db/schema';

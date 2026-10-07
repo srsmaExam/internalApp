@@ -26,6 +26,7 @@ import {
   GraduationCap,
   ArrowRight,
   MessageCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { Badge, Button, Card, CardBody, CardHeader, CardTitle, Dialog, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
 import type {
@@ -350,7 +351,7 @@ function BriSpeedometerGauge({
   const isFoundational = clamped < 20;
 
   return (
-    <div className="flex flex-col items-center justify-between rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 via-white to-slate-50/50 p-4 sm:p-5 shadow-xs dark:border-slate-800 dark:from-slate-900/90 dark:via-slate-900 dark:to-slate-950/80 h-full">
+    <div className="flex flex-col items-center justify-between rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 via-white to-slate-50/50 p-4 sm:p-5 shadow-xs dark:border-slate-800 dark:from-slate-900/90 dark:via-slate-900 dark:to-slate-950/80">
       <div className="w-full flex items-center justify-between">
         <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
           <Award className="size-3.5 text-brand-600 dark:text-brand-400" />
@@ -452,7 +453,7 @@ function BriSpeedometerGauge({
         <div
           className={`rounded-lg py-1 border transition-all ${isFoundational
               ? 'bg-indigo-500/15 text-indigo-800 border-indigo-400 font-black shadow-2xs dark:text-indigo-300'
-              : 'text-slate-400 border-slate-200/60 dark:border-slate-800'
+              : 'text-slate-500 border-slate-200/80 bg-white/50 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-800/80'
             }`}
         >
           &lt;20 Foundational
@@ -460,7 +461,7 @@ function BriSpeedometerGauge({
         <div
           className={`rounded-lg py-1 border transition-all ${isBasic
               ? 'bg-amber-500/15 text-amber-800 border-amber-400 font-black shadow-2xs dark:text-amber-300'
-              : 'text-slate-400 border-slate-200/60 dark:border-slate-800'
+              : 'text-slate-500 border-slate-200/80 bg-white/50 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-800/80'
             }`}
         >
           20–49 Basic
@@ -468,7 +469,7 @@ function BriSpeedometerGauge({
         <div
           className={`rounded-lg py-1 border transition-all ${isMed
               ? 'bg-blue-500/15 text-blue-800 border-blue-400 font-black shadow-2xs dark:text-blue-300'
-              : 'text-slate-400 border-slate-200/60 dark:border-slate-800'
+              : 'text-slate-500 border-slate-200/80 bg-white/50 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-800/80'
             }`}
         >
           50–69 Strong
@@ -476,7 +477,7 @@ function BriSpeedometerGauge({
         <div
           className={`rounded-lg py-1 border transition-all ${isHigh
               ? 'bg-emerald-500/15 text-emerald-800 border-emerald-400 font-black shadow-2xs dark:text-emerald-300'
-              : 'text-slate-400 border-slate-200/60 dark:border-slate-800'
+              : 'text-slate-500 border-slate-200/80 bg-white/50 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-800/80'
             }`}
         >
           70+ High
@@ -985,16 +986,21 @@ export function BoardReadinessReport({
       isScrollingRef.current = false;
     }, 950);
 
-    // Compute dynamic header + sticky toolbar height to offset scroll
-    const appHeader = document.querySelector('header');
-    const appHeaderHeight = appHeader ? appHeader.getBoundingClientRect().height : 0;
+    // Compute dynamic sticky top + sticky toolbar height to offset scroll with generous breathing clearance
+    const stickyTop = typeof window !== 'undefined' && window.innerWidth < 768 ? 88 : 64;
     const toolbar = document.getElementById('report-sticky-toolbar');
-    const toolbarHeight = toolbar ? toolbar.getBoundingClientRect().height : 0;
+    const toolbarHeight = toolbar ? toolbar.offsetHeight : (typeof window !== 'undefined' && window.innerWidth < 768 ? 110 : 90);
 
     // Generous offset so element top rounded border and padding are fully visible below sticky headers
-    const totalOffset = (appHeaderHeight || 90) + (toolbarHeight || 75) + 12;
-    const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
-    const elementTop = element.getBoundingClientRect().top + scrollY;
+    const totalOffset = stickyTop + toolbarHeight + 24;
+    const scrollingElement = document.scrollingElement || document.documentElement || document.body;
+    const currentScrollY =
+      window.scrollY ||
+      window.pageYOffset ||
+      document.documentElement.scrollTop ||
+      (scrollingElement ? scrollingElement.scrollTop : 0) ||
+      (document.body ? document.body.scrollTop : 0);
+    const elementTop = element.getBoundingClientRect().top + currentScrollY;
     const targetY = Math.max(0, elementTop - totalOffset);
 
     try {
@@ -1004,6 +1010,27 @@ export function BoardReadinessReport({
       });
     } catch {
       window.scrollTo(0, targetY);
+    }
+
+    if (scrollingElement) {
+      try {
+        scrollingElement.scrollTo({
+          top: targetY,
+          behavior: 'smooth',
+        });
+      } catch {
+        scrollingElement.scrollTop = targetY;
+      }
+    }
+    if (document.body && document.body !== scrollingElement) {
+      try {
+        document.body.scrollTo({
+          top: targetY,
+          behavior: 'smooth',
+        });
+      } catch {
+        document.body.scrollTop = targetY;
+      }
     }
   };
 
@@ -1019,11 +1046,10 @@ export function BoardReadinessReport({
 
     const handleScroll = () => {
       if (isScrollingRef.current) return;
-      const appHeader = document.querySelector('header');
-      const appHeaderHeight = appHeader ? appHeader.getBoundingClientRect().height : 0;
+      const stickyTop = typeof window !== 'undefined' && window.innerWidth < 768 ? 88 : 64;
       const toolbar = document.getElementById('report-sticky-toolbar');
-      const toolbarHeight = toolbar ? toolbar.getBoundingClientRect().height : 0;
-      const threshold = (appHeaderHeight || 90) + (toolbarHeight || 75) + 30;
+      const toolbarHeight = toolbar ? toolbar.offsetHeight : (typeof window !== 'undefined' && window.innerWidth < 768 ? 110 : 90);
+      const threshold = stickyTop + toolbarHeight + 35;
 
       for (let i = pageIds.length - 1; i >= 0; i--) {
         const el = getPageSection(pageIds[i]);
@@ -1038,8 +1064,10 @@ export function BoardReadinessReport({
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     };
   }, [isTeacherView]);
@@ -1214,10 +1242,10 @@ export function BoardReadinessReport({
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 pb-16">
-      {/* 1. Header Toolbar (Hidden in Print) */}
+      {/* 1. Header Navigation Toolbar */}
       <div
         id="report-sticky-toolbar"
-        className="no-print sticky top-[5.5rem] md:top-[4rem] z-20 flex flex-col gap-2.5 rounded-2xl border border-slate-200/90 bg-white/95 p-3 sm:p-3.5 shadow-md backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95"
+        className="sticky top-[5.5rem] md:top-[4rem] z-20 flex flex-col gap-2.5 rounded-2xl border border-slate-200/90 bg-white/95 p-3 sm:p-3.5 shadow-md backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95"
       >
         <div className="flex items-center justify-between gap-3 min-w-0">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -1253,69 +1281,98 @@ export function BoardReadinessReport({
           </div>
         </div>
 
-        {/* Page Scroll navigation buttons - Full width dedicated row so P1-P5 never overflow */}
-        <div className="flex items-center gap-1 sm:gap-1.5 rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-800/90 text-xs font-bold w-full overflow-x-auto no-scrollbar">
+        {/* Page Scroll navigation buttons - Responsive grid on mobile, flex on desktop so all tabs fit seamlessly */}
+        <div className={`grid ${isTeacherView ? 'grid-cols-6' : 'grid-cols-5'} sm:flex sm:items-center gap-1 sm:gap-1.5 rounded-xl border border-slate-200 bg-slate-100 p-1 sm:p-1.5 dark:border-slate-800 dark:bg-slate-800/90 text-xs font-bold w-full sm:overflow-x-auto no-scrollbar`}>
           <button
             type="button"
             onClick={() => scrollToPage('page1')}
-            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2.5 sm:px-3 py-2 sm:py-1.5 transition text-center text-xs sm:text-xs font-black ${activePage === 'page1'
-              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white'
+            className={`flex-1 rounded-lg px-1 sm:px-3 py-1.5 sm:py-1.5 transition text-center text-xs font-black ${activePage === 'page1'
+              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white ring-1 ring-slate-200/80 dark:ring-slate-700/80'
               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
               }`}
           >
-            P1 • Overview
+            <span className="hidden sm:inline">P1 • Overview</span>
+            <span className="sm:hidden flex flex-col items-center justify-center leading-tight">
+              <span className="text-[11px] font-black">P1</span>
+              <span className="text-[8.5px] font-semibold opacity-75">Overview</span>
+            </span>
           </button>
           <button
             type="button"
             onClick={() => scrollToPage('page2')}
-            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2.5 sm:px-3 py-2 sm:py-1.5 transition text-center text-xs sm:text-xs font-black ${activePage === 'page2'
-              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white'
+            className={`flex-1 rounded-lg px-1 sm:px-3 py-1.5 sm:py-1.5 transition text-center text-xs font-black ${activePage === 'page2'
+              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white ring-1 ring-slate-200/80 dark:ring-slate-700/80'
               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
               }`}
           >
-            P2 • Strengths
+            <span className="hidden sm:inline">P2 • Strengths</span>
+            <span className="sm:hidden flex flex-col items-center justify-center leading-tight">
+              <span className="text-[11px] font-black">P2</span>
+              <span className="text-[8.5px] font-semibold opacity-75">Strengths</span>
+            </span>
           </button>
           <button
             type="button"
             onClick={() => scrollToPage('page3')}
-            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2.5 sm:px-3 py-2 sm:py-1.5 transition text-center text-xs sm:text-xs font-black ${activePage === 'page3'
-              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white'
+            className={`flex-1 rounded-lg px-1 sm:px-3 py-1.5 sm:py-1.5 transition text-center text-xs font-black ${activePage === 'page3'
+              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white ring-1 ring-slate-200/80 dark:ring-slate-700/80'
               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
               }`}
           >
-            P3 • Priorities
+            <span className="hidden sm:inline">P3 • Priorities</span>
+            <span className="sm:hidden flex flex-col items-center justify-center leading-tight">
+              <span className="text-[11px] font-black">P3</span>
+              <span className="text-[8.5px] font-semibold opacity-75">Areas</span>
+            </span>
           </button>
           <button
             type="button"
             onClick={() => scrollToPage('page4')}
-            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2.5 sm:px-3 py-2 sm:py-1.5 transition text-center text-xs sm:text-xs font-black ${activePage === 'page4'
-              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white'
+            className={`flex-1 rounded-lg px-1 sm:px-3 py-1.5 sm:py-1.5 transition text-center text-xs font-black ${activePage === 'page4'
+              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white ring-1 ring-slate-200/80 dark:ring-slate-700/80'
               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
               }`}
           >
-            P4 • Recommendations
+            <span className="hidden sm:inline">P4 • Next Steps</span>
+            <span className="sm:hidden flex flex-col items-center justify-center leading-tight">
+              <span className="text-[11px] font-black">P4</span>
+              <span className="text-[8.5px] font-semibold opacity-75">Next Steps</span>
+            </span>
           </button>
           <button
             type="button"
             onClick={() => scrollToPage('page5')}
-            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2.5 sm:px-3 py-2 sm:py-1.5 transition text-center text-xs sm:text-xs font-black ${activePage === 'page5'
-              ? 'bg-brand-600 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+            className={`flex-1 rounded-lg px-1 sm:px-3 py-1.5 sm:py-1.5 transition text-center text-xs font-black ${activePage === 'page5'
+              ? 'bg-white text-brand-700 shadow-xs dark:bg-slate-900 dark:text-brand-300 ring-1 ring-brand-300 dark:ring-brand-700'
+              : 'text-slate-600 hover:text-brand-600 dark:text-slate-400 dark:hover:text-brand-300'
               }`}
           >
-            P5 • Support
+            <span className="hidden sm:inline">P5 • Support</span>
+            <span className="sm:hidden flex flex-col items-center justify-center leading-tight">
+              <span className="text-[11px] font-black">P5</span>
+              <span className="text-[8.5px] font-semibold opacity-75">Support</span>
+            </span>
           </button>
           {isTeacherView && (
             <button
               type="button"
               onClick={() => scrollToPage('page6')}
-              className={`flex-1 shrink-0 whitespace-nowrap flex items-center justify-center gap-1 rounded-lg px-2.5 sm:px-2.5 py-2 sm:py-1.5 transition text-xs sm:text-xs font-black ${activePage === 'page6'
+              className={`flex-1 rounded-lg px-1 sm:px-2.5 py-1.5 sm:py-1.5 transition text-center text-xs font-black ${activePage === 'page6'
                 ? 'bg-amber-500 text-slate-950 shadow-xs dark:bg-amber-400'
                 : 'text-amber-700 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200'
                 }`}
             >
-              <Calculator className="size-3.5" />
-              P6 • Audit
+              <span className="hidden sm:inline-flex items-center justify-center gap-1">
+                <Calculator className="size-3.5" />
+                P6 • Audit
+              </span>
+              <span className="sm:hidden flex flex-col items-center justify-center leading-tight">
+                <span className="text-[11px] font-black flex items-center justify-center gap-0.5">
+                  <Calculator className="size-3" />
+                  P6
+                </span>
+                <span className="text-[8.5px] font-semibold opacity-75">Audit</span>
+              </span>
             </button>
           )}
         </div>
@@ -1326,7 +1383,7 @@ export function BoardReadinessReport({
           ========================================================================= */}
       <section
         id="report-page-1"
-        className="report-page-container report-page-1 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-48 md:scroll-mt-32"
+        className="report-page-container report-page-1 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block scroll-mt-56 sm:scroll-mt-52 md:scroll-mt-48"
       >
         {/* Header watermark & Brand bar */}
         <div className="border-b border-slate-100 pb-4 dark:border-slate-800">
@@ -1360,7 +1417,7 @@ export function BoardReadinessReport({
           </div>
 
           <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-2.5 break-words">
-            BOARD READINESS CHALLENGE REPORT
+            PAGE 1: BOARD READINESS CHALLENGE REPORT
           </h2>
 
           <div className="mt-3.5 w-full rounded-xl border border-blue-200/90 bg-gradient-to-r from-blue-50/80 to-indigo-50/50 p-3.5 sm:p-4 text-sm dark:border-blue-900/60 dark:bg-gradient-to-r dark:from-blue-950/40 dark:to-indigo-950/20 flex items-start gap-2.5 shadow-2xs">
@@ -1395,11 +1452,11 @@ export function BoardReadinessReport({
               <div className="space-y-3 w-full">
                 {/* Mobile Mascot Avatar in header (< sm) */}
                 <div className="flex items-center gap-3.5 sm:hidden">
-                  <div className="relative size-20 shrink-0 rounded-2xl border-2 border-brand-500/40 bg-gradient-to-br from-white to-brand-50/50 p-1.5 shadow-md dark:from-slate-800 dark:to-slate-900 dark:border-brand-400/40 flex items-center justify-center overflow-hidden">
+                  <div className="relative size-20 shrink-0 rounded-2xl border-2 border-brand-500/40 bg-slate-950 p-1.5 shadow-md ring-1 ring-brand-400/20 flex items-center justify-center overflow-hidden">
                     <img
                       src={avatarSrc}
                       alt={isMale ? 'Male Student Mascot' : 'Female Student Mascot'}
-                      className="size-full object-contain"
+                      className="size-full object-contain rounded-xl"
                     />
                   </div>
                   <div className="space-y-1 min-w-0 flex-1">
@@ -1429,11 +1486,13 @@ export function BoardReadinessReport({
 
               {/* Desktop Mascot Standing Character (>= sm) */}
               <div className="hidden sm:flex shrink-0 items-center justify-center">
-                <img
-                  src={avatarSrc}
-                  alt={isMale ? 'Male Student Mascot' : 'Female Student Mascot'}
-                  className="h-32 sm:h-40 w-auto object-contain drop-shadow-md"
-                />
+                <div className="relative rounded-2xl border-2 border-brand-500/40 bg-slate-950 p-2 shadow-md ring-1 ring-brand-400/20 overflow-hidden flex items-center justify-center">
+                  <img
+                    src={avatarSrc}
+                    alt={isMale ? 'Male Student Mascot' : 'Female Student Mascot'}
+                    className="h-32 sm:h-36 w-auto object-contain rounded-xl"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -1720,7 +1779,7 @@ export function BoardReadinessReport({
           ========================================================================= */}
       <section
         id="report-page-2"
-        className="report-page-container report-page-2 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-48 md:scroll-mt-32"
+        className="report-page-container report-page-2 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block scroll-mt-56 sm:scroll-mt-52 md:scroll-mt-48"
       >
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
           <div className="min-w-0 flex-1">
@@ -1933,7 +1992,7 @@ export function BoardReadinessReport({
           ========================================================================= */}
       <section
         id="report-page-3"
-        className="report-page-container report-page-3 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-48 md:scroll-mt-32"
+        className="report-page-container report-page-3 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block scroll-mt-56 sm:scroll-mt-52 md:scroll-mt-48"
       >
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
           <div className="min-w-0 flex-1">
@@ -1945,7 +2004,7 @@ export function BoardReadinessReport({
               </span>
             </span>
             <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1.5 break-words">
-              Page 3: WHERE SHOULD YOU IMPROVE?
+              PAGE 3: WHERE SHOULD YOU IMPROVE?
             </h2>
           </div>
           <div className="text-right shrink-0">
@@ -2020,7 +2079,7 @@ export function BoardReadinessReport({
                         ? 'lg:grid-cols-2'
                         : weaknessGaps.length === 3
                           ? 'lg:grid-cols-3'
-                          : 'lg:grid-cols-4'
+                          : 'lg:grid-cols-2 xl:grid-cols-4'
                       }`}
                   >
                     {weaknessGaps.map((g) => {
@@ -2362,7 +2421,7 @@ export function BoardReadinessReport({
           ========================================================================= */}
       <section
         id="report-page-4"
-        className="report-page-container report-page-4 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-48 md:scroll-mt-32"
+        className="report-page-container report-page-4 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block scroll-mt-56 sm:scroll-mt-52 md:scroll-mt-48"
       >
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
           <div className="min-w-0 flex-1">
@@ -3064,7 +3123,7 @@ export function BoardReadinessReport({
 
       <section
         id="report-page-5"
-        className="report-page-container report-page-5 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-3.5 sm:p-5 md:p-6 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-48 md:scroll-mt-32"
+        className="report-page-container report-page-5 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-3.5 sm:p-5 md:p-6 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block scroll-mt-56 sm:scroll-mt-52 md:scroll-mt-48"
       >
         <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800 gap-2">
           <div className="min-w-0 flex-1">
@@ -3077,7 +3136,7 @@ export function BoardReadinessReport({
             </span>
             <div className="mt-1">
               <h2 className="text-lg sm:text-xl font-black tracking-tight text-slate-900 dark:text-white break-words">
-                Page 5: NEED STRUCTURED SUPPORT?
+                PAGE 5: NEED STRUCTURED SUPPORT?
               </h2>
               <p className="mt-1 text-sm font-semibold text-brand-700 dark:text-brand-300 leading-snug">
                 We recommend joining our Board Mastery Course to excel in the upcoming Board Exams. Online, Offline and Combined Batches begin from 26th October onwards.
@@ -3321,37 +3380,37 @@ export function BoardReadinessReport({
                 </div>
 
                 {/* Phase 2: Master */}
-                <div className="rounded-xl border border-slate-200 bg-slate-950 p-2.5 space-y-2 text-white dark:border-slate-800">
+                <div className="rounded-xl border border-amber-300/80 bg-amber-50/50 p-2.5 space-y-2 text-slate-900 dark:border-amber-500/30 dark:bg-amber-950/20 dark:text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
-                      <span className="size-2 rounded-full bg-amber-400" />
-                      <span className="text-xs font-black text-amber-400 uppercase tracking-wider">
+                      <span className="size-2 rounded-full bg-amber-500" />
+                      <span className="text-xs font-black text-amber-800 dark:text-amber-400 uppercase tracking-wider">
                         2. MASTER
                       </span>
                     </div>
-                    <span className="text-[10px] sm:text-[11px] font-extrabold uppercase text-amber-300 tracking-wider">
+                    <span className="text-[10px] sm:text-[11px] font-extrabold uppercase text-amber-700 dark:text-amber-300 tracking-wider">
                       PRACTISE. APPLY. SOLVE.
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
-                    <div className="rounded-lg bg-slate-900 p-2 border border-slate-800">
-                      <div className="font-bold text-amber-300 text-xs">1. BASIC</div>
-                      <div className="text-[11px] text-slate-300 mt-0.5">Build confidence with Concept-First questions</div>
+                    <div className="rounded-lg bg-white/90 p-2 border border-amber-200/80 dark:bg-slate-900/80 dark:border-amber-900/50 shadow-2xs">
+                      <div className="font-bold text-amber-800 dark:text-amber-300 text-xs">1. BASIC</div>
+                      <div className="text-[11px] text-slate-700 dark:text-slate-300 mt-0.5">Build confidence with Concept-First questions</div>
                     </div>
-                    <div className="rounded-lg bg-slate-900 p-2 border border-slate-800">
-                      <div className="font-bold text-amber-300 text-xs">2. APPLICATION</div>
-                      <div className="text-[11px] text-slate-300 mt-0.5">Apply ideas to unfamiliar, Exam-Style problems</div>
+                    <div className="rounded-lg bg-white/90 p-2 border border-amber-200/80 dark:bg-slate-900/80 dark:border-amber-900/50 shadow-2xs">
+                      <div className="font-bold text-amber-800 dark:text-amber-300 text-xs">2. APPLICATION</div>
+                      <div className="text-[11px] text-slate-700 dark:text-slate-300 mt-0.5">Apply ideas to unfamiliar, Exam-Style problems</div>
                     </div>
-                    <div className="rounded-lg bg-slate-900 p-2 border border-slate-800">
-                      <div className="font-bold text-amber-300 text-xs">3. HIGHER-ORDER</div>
-                      <div className="text-[11px] text-slate-300 mt-0.5">Develop thinking needed for Competency based questions</div>
+                    <div className="rounded-lg bg-white/90 p-2 border border-amber-200/80 dark:bg-slate-900/80 dark:border-amber-900/50 shadow-2xs">
+                      <div className="font-bold text-amber-800 dark:text-amber-300 text-xs">3. HIGHER-ORDER</div>
+                      <div className="text-[11px] text-slate-700 dark:text-slate-300 mt-0.5">Develop thinking needed for Competency based questions</div>
                     </div>
-                    <div className="rounded-lg bg-slate-900 p-2 border border-slate-800">
-                      <div className="font-bold text-amber-300 text-xs">4. BOARD PATTERN</div>
-                      <div className="text-[11px] text-slate-300 mt-0.5">Practise the PYQs that matter the most in Boards</div>
+                    <div className="rounded-lg bg-white/90 p-2 border border-amber-200/80 dark:bg-slate-900/80 dark:border-amber-900/50 shadow-2xs">
+                      <div className="font-bold text-amber-800 dark:text-amber-300 text-xs">4. BOARD PATTERN</div>
+                      <div className="text-[11px] text-slate-700 dark:text-slate-300 mt-0.5">Practise the PYQs that matter the most in Boards</div>
                     </div>
                   </div>
-                  <div className="text-center text-[11px] text-amber-200/90 font-semibold pt-0.5">
+                  <div className="text-center text-[11px] text-amber-800/90 dark:text-amber-300/90 font-semibold pt-0.5">
                     • Build Confidence • Apply Concepts • Master Board Patterns
                   </div>
                 </div>
@@ -3402,13 +3461,13 @@ export function BoardReadinessReport({
               {/* Star Faculty Guiding Your Child */}
               <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 space-y-2.5 dark:border-slate-800 dark:bg-slate-900 shadow-xs">
                 <div>
-                  <div className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-[#0e3b43] dark:text-amber-300">
+                  <div className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-teal-900 dark:text-amber-300">
                     NOT 100 HOURS OF LECTURES. IT&apos;S 100 HOURS OF GUIDED PREPARATION!
                   </div>
-                  <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-[#0e3b43] dark:text-white mt-0.5">
+                  <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white mt-0.5">
                     STAR FACULTY GUIDING YOUR CHILD
                   </h4>
-                  <div className="mt-1 h-0.5 w-full bg-[#0e3b43]/30 dark:bg-slate-700" />
+                  <div className="mt-1 h-0.5 w-full bg-teal-900/20 dark:bg-slate-700" />
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end text-center pt-1">
@@ -3425,13 +3484,13 @@ export function BoardReadinessReport({
                       MR. AMAL M DAS
                     </span>
                     <div className="mt-1 flex flex-col space-y-0.5">
-                      <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                      <span className="text-[10.5px] sm:text-[11px] font-bold text-slate-800 dark:text-slate-200">
                         B.Tech, IIT KGP
                       </span>
-                      <span className="text-[9.5px] sm:text-[10px] font-medium text-[#0e3b43] dark:text-teal-400 leading-tight">
+                      <span className="text-[10px] sm:text-[10.5px] font-medium text-teal-800 dark:text-teal-400 leading-tight">
                         Program Coordinator
                       </span>
-                      <span className="text-[9.5px] sm:text-[10px] font-medium text-[#0e3b43] dark:text-teal-400 leading-tight">
+                      <span className="text-[10px] sm:text-[10.5px] font-medium text-teal-800 dark:text-teal-400 leading-tight">
                         Maths HOD
                       </span>
                     </div>
@@ -3450,10 +3509,10 @@ export function BoardReadinessReport({
                       MR. BRAJESH
                     </span>
                     <div className="mt-1 flex flex-col space-y-0.5">
-                      <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                      <span className="text-[10.5px] sm:text-[11px] font-bold text-slate-800 dark:text-slate-200">
                         B.Tech, IIT Madras
                       </span>
-                      <span className="text-[9.5px] sm:text-[10px] font-medium text-[#0e3b43] dark:text-teal-400 leading-tight">
+                      <span className="text-[10px] sm:text-[10.5px] font-medium text-teal-800 dark:text-teal-400 leading-tight">
                         Physics HOD
                       </span>
                     </div>
@@ -3472,10 +3531,10 @@ export function BoardReadinessReport({
                       MR. NINAD
                     </span>
                     <div className="mt-1 flex flex-col space-y-0.5">
-                      <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                      <span className="text-[10.5px] sm:text-[11px] font-bold text-slate-800 dark:text-slate-200">
                         B.Tech, IIT Madras
                       </span>
-                      <span className="text-[9.5px] sm:text-[10px] font-medium text-[#0e3b43] dark:text-teal-400 leading-tight">
+                      <span className="text-[10px] sm:text-[10.5px] font-medium text-teal-800 dark:text-teal-400 leading-tight">
                         Chemistry HOD
                       </span>
                     </div>
@@ -3494,10 +3553,10 @@ export function BoardReadinessReport({
                       MR. THIRUMALA
                     </span>
                     <div className="mt-1 flex flex-col space-y-0.5">
-                      <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                      <span className="text-[10.5px] sm:text-[11px] font-bold text-slate-800 dark:text-slate-200">
                         M.Tech, NIT Warangal
                       </span>
-                      <span className="text-[9.5px] sm:text-[10px] font-medium text-[#0e3b43] dark:text-teal-400 leading-tight">
+                      <span className="text-[10px] sm:text-[10.5px] font-medium text-teal-800 dark:text-teal-400 leading-tight">
                         Maths Faculty
                       </span>
                     </div>
@@ -3525,7 +3584,7 @@ export function BoardReadinessReport({
 
         {/* Action Button after Page 5: Go to Solutions Tab */}
         {onGoToSolutions && (
-          <div className="no-print mt-8 rounded-2xl border-2 border-brand-500/30 bg-gradient-to-r from-brand-50/90 via-indigo-50/50 to-teal-50/60 p-4 sm:p-5 dark:border-brand-500/40 dark:bg-gradient-to-r dark:from-slate-900 dark:via-brand-950/40 dark:to-slate-900 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="mt-8 rounded-2xl border-2 border-brand-500/30 bg-gradient-to-r from-brand-50/90 via-indigo-50/50 to-teal-50/60 p-4 sm:p-5 dark:border-brand-500/40 dark:bg-gradient-to-r dark:from-slate-900 dark:via-brand-950/40 dark:to-slate-900 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="space-y-1 text-center sm:text-left">
               <div className="inline-flex items-center gap-1.5 rounded-full bg-brand-100 dark:bg-brand-950 px-2.5 py-0.5 text-xs font-bold text-brand-700 dark:text-brand-300">
                 <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -3556,7 +3615,7 @@ export function BoardReadinessReport({
       {isTeacherView && report.calculationSteps && (
         <section
           id="report-page-6"
-          className="report-page-container report-page-6 relative overflow-hidden rounded-3xl border border-amber-300 bg-white p-4 sm:p-8 shadow-sm transition dark:border-amber-700/60 dark:bg-slate-900 block print:block scroll-mt-48 md:scroll-mt-32"
+          className="report-page-container report-page-6 relative overflow-hidden rounded-3xl border border-amber-300 bg-white p-4 sm:p-8 shadow-sm transition dark:border-amber-700/60 dark:bg-slate-900 block scroll-mt-56 sm:scroll-mt-52 md:scroll-mt-48"
         >
           {/* Header watermark & Brand bar */}
           <div className="flex items-center justify-between border-b border-amber-200 pb-4 dark:border-amber-900/60 gap-2">
@@ -3570,7 +3629,7 @@ export function BoardReadinessReport({
                 </span>
               </div>
               <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1.5 break-words">
-                PAGE 6 — DIAGNOSTIC AUDIT &amp; STEP-BY-STEP CALCULATIONS
+                PAGE 6: DIAGNOSTIC AUDIT &amp; STEP-BY-STEP CALCULATIONS
               </h2>
             </div>
             <div className="text-right shrink-0">
@@ -4438,7 +4497,7 @@ export function BoardReadinessReport({
               </div>
 
               {/* Filter controls */}
-              <div className="no-print flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1">
                 <button
                   type="button"
                   onClick={() => setAuditFilter('all')}
@@ -4626,19 +4685,33 @@ export function BoardReadinessReport({
           size="2xl"
           title="SRSMA Class 10 Board Mastery Course Brochure"
           footer={
-            <div className="flex w-full items-center justify-end">
+            <div className="flex w-full items-center justify-between gap-2">
+              <a
+                href="/board-challenge/brochure_full_300dpi.webp"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-brand-300 bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700 hover:bg-brand-100 transition dark:border-brand-700 dark:bg-brand-950 dark:text-brand-300"
+              >
+                <ExternalLink className="size-3.5" />
+                <span>Open Full-Res in New Tab</span>
+              </a>
               <Button variant="secondary" size="sm" onClick={() => setShowBrochureModal(false)}>
                 Close
               </Button>
             </div>
           }
         >
-          <div className="max-h-[75vh] overflow-y-auto p-1">
-            <img
-              src="/board-challenge/brochure_full_300dpi.webp"
-              alt="SRSMA Board Mastery Course Brochure"
-              className="w-full rounded-lg object-contain shadow-md"
-            />
+          <div className="space-y-2">
+            <p className="sm:hidden text-center text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              💡 Tip: Tap &quot;Open Full-Res in New Tab&quot; or rotate your phone to view every detail crisply.
+            </p>
+            <div className="max-h-[75vh] overflow-auto p-1 rounded-xl bg-slate-900/5 dark:bg-slate-950/40">
+              <img
+                src="/board-challenge/brochure_full_300dpi.webp"
+                alt="SRSMA Board Mastery Course Brochure"
+                className="w-full min-w-[340px] sm:min-w-[600px] rounded-lg object-contain shadow-md"
+              />
+            </div>
           </div>
         </Dialog>
       )}

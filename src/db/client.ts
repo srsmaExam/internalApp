@@ -34,19 +34,46 @@ export function isExternalDb(): boolean {
 }
 
 /**
+ * Resolves the active PostgreSQL connection URL.
+ * Checks for Cloudflare Hyperdrive bindings first (for edge-accelerated Supabase pooling),
+ * falling back to process.env.DATABASE_URL.
+ */
+async function getActiveDatabaseUrl(): Promise<string | null> {
+  try {
+    const { getCloudflareContext } = await import('@opennextjs/cloudflare');
+    const cfContext = getCloudflareContext();
+    const cfEnv = cfContext?.env as Record<string, unknown> | undefined;
+    const hyperdrive = cfEnv?.HYPERDRIVE as { connectionString?: string } | undefined;
+    const databaseBinding = cfEnv?.DATABASE as { connectionString?: string } | undefined;
+    if (hyperdrive?.connectionString) return hyperdrive.connectionString;
+    if (databaseBinding?.connectionString) return databaseBinding.connectionString;
+    if (typeof cfEnv?.DATABASE_URL === 'string' && cfEnv.DATABASE_URL.trim().length > 0) {
+      return cfEnv.DATABASE_URL.trim();
+    }
+  } catch {
+    // Outside of Cloudflare request context (CLI scripts, local dev, or standard Node)
+  }
+
+  if (process.env.DATABASE_URL && process.env.DATABASE_URL.trim().length > 0) {
+    return process.env.DATABASE_URL.trim();
+  }
+  return null;
+}
+
+/**
  * Dual-engine database initialization:
- * 1. If DATABASE_URL is set -> connects to production PostgreSQL connection pool (pg.Pool).
+ * 1. If DATABASE_URL or Hyperdrive is available -> connects to production PostgreSQL connection pool (pg.Pool).
  * 2. If DATABASE_URL is unset -> boots in-process PGlite (data/pgdata) with zero configuration.
  */
 async function initialise(): Promise<{ client: ClientQueryable; db: Db }> {
-  if (isExternalDb()) {
-    const rawUrl = process.env.DATABASE_URL!.trim();
-    const isLocalhost = rawUrl.includes('localhost') || rawUrl.includes('127.0.0.1');
+  const activeUrl = await getActiveDatabaseUrl();
+  if (activeUrl) {
+    const isLocalhost = activeUrl.includes('localhost') || activeUrl.includes('127.0.0.1');
 
     // Strip sslmode query parameter to prevent pg-connection-string from overriding
     // our explicit ssl config with an empty object {} that forces strict CA checking and
     // triggers SELF_SIGNED_CERT_IN_CHAIN on cloud providers like Supabase.
-    const sanitizedUrl = rawUrl.replace(/([?&])sslmode=[^&]+(&|$)/, (m, p1, p2) => (p1 === '?' && p2 ? '?' : ''));
+    const sanitizedUrl = activeUrl.replace(/([?&])sslmode=[^&]+(&|$)/, (m, p1, p2) => (p1 === '?' && p2 ? '?' : ''));
 
     const sslOption =
       process.env.DATABASE_SSL === 'false'
@@ -60,10 +87,17 @@ async function initialise(): Promise<{ client: ClientQueryable; db: Db }> {
       new Pool({
         connectionString: sanitizedUrl,
         ssl: sslOption,
-        max: Number(process.env.DATABASE_POOL_MAX ?? 10),
-        idleTimeoutMillis: 30_000,
+        max: Number(process.env.DATABASE_POOL_MAX ?? 5),
+        idleTimeoutMillis: 15_000,
         connectionTimeoutMillis: 10_000,
       });
+
+    pool.on('error', (err) => {
+      // In serverless / edge environments (Cloudflare Workers, Vercel), idle TCP connections
+      // get quietly severed when isolates sleep. Logging without crashing ensures the pool
+      // reconnects on the next query.
+      console.warn('[db pool warning]', err.message);
+    });
 
     globalForDb.__vtpPgPool = pool;
 
@@ -75,7 +109,13 @@ async function initialise(): Promise<{ client: ClientQueryable; db: Db }> {
     db.$client = pool;
 
     // In non-serverless long-running production, initialize sweep interval
-    if (process.env.VERCEL !== '1' && process.env.DISABLE_SWEEP_TIMER !== 'true') {
+    const isServerless = Boolean(
+      process.env.VERCEL === '1' ||
+      process.env.CF_PAGES === '1' ||
+      process.env.CLOUDFLARE === '1' ||
+      process.env.DISABLE_SWEEP_TIMER === 'true'
+    );
+    if (!isServerless) {
       await sweepExpiredAttempts(db).catch((err) => console.error('[sweep] initial run failed', err));
 
       const SWEEP_INTERVAL_MS = 60_000;

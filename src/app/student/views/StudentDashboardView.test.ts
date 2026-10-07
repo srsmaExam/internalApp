@@ -165,7 +165,7 @@ describe('StudentDashboardView - Pre-Unlock vs Unlocked Diagnostic Tests', () =>
       submittedAt: new Date(),
       questionOrder: [],
       totalMarks: '18',
-      maxMarks: 20,
+      maxMarks: '20',
       totalTimeS: 1100,
     });
 
