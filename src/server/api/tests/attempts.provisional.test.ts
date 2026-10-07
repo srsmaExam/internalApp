@@ -182,7 +182,7 @@ describe('FBR-03 exploit path: provisional account entitlement', () => {
     expect(body.error).toBe('enrollment_required');
   });
 
-  it('allows a provisional account to attempt a public test, but the result never discloses answer/solution', async () => {
+  it('allows a provisional account to attempt a public test, and directly discloses solutions upon submission', async () => {
     currentSession = {
       userId: provisionalStudentId,
       username: 'student_5550001',
@@ -206,12 +206,12 @@ describe('FBR-03 exploit path: provisional account entitlement', () => {
     expect(resultStatus).toBe(200);
 
     const serialized = JSON.stringify(resultBody);
-    expect(serialized).not.toContain('TOP_SECRET_WORKED_SOLUTION');
-    expect(serialized).not.toContain('ANOTHER_SECRET_SOLUTION');
+    expect(serialized).toContain('TOP_SECRET_WORKED_SOLUTION');
+    expect(serialized).toContain('ANOTHER_SECRET_SOLUTION');
 
     for (const q of resultBody.questions) {
       expect(q).toHaveProperty('answer');
-      expect(q).not.toHaveProperty('solution');
+      expect(q).toHaveProperty('solution');
     }
   });
 });

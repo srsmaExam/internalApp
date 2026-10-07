@@ -191,7 +191,7 @@ export function ResultReviewClient({
   const [school, setSchool] = useState('');
   const [whatsappConsent, setWhatsappConsent] = useState(true);
   const [submittingReport, setSubmittingReport] = useState(false);
-  const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [reportSubmitted, setReportSubmitted] = useState(true);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
 
@@ -282,18 +282,14 @@ export function ResultReviewClient({
 
   useEffect(() => {
     if (data) {
-      if (userRole === 'teacher' || data.isReportUnlocked) {
-        setReportSubmitted(true);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('srsma_report_unlocked', 'true');
-          localStorage.setItem(`srsma_report_${attemptId}`, 'true');
-          window.dispatchEvent(new Event('srsma_report_unlocked'));
-        }
-      } else {
-        setReportSubmitted(false);
+      setReportSubmitted(true);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('srsma_report_unlocked', 'true');
+        localStorage.setItem(`srsma_report_${attemptId}`, 'true');
+        window.dispatchEvent(new Event('srsma_report_unlocked'));
       }
     }
-  }, [data?.isReportUnlocked, attemptId, data, userRole]);
+  }, [data, attemptId]);
 
   useEffect(() => {
     if (userRole === 'teacher') return;
@@ -541,7 +537,9 @@ export function ResultReviewClient({
   }
 
   // Dedicated Post-Test Report & Solution Unlocking View
-  if (!reportSubmitted && userRole === 'student') {
+  // Disabled as per user requirement: directly show solutions after test without asking school and gender
+  const showUnlockView: boolean = false;
+  if (showUnlockView && !reportSubmitted && userRole === 'student') {
     return (
       <div className="mx-auto max-w-3xl space-y-6 pb-16">
         {/* Top return link */}
@@ -1174,7 +1172,7 @@ export function ResultReviewClient({
         </div>
       )}
 
-      {/* Hero Unlocked Celebration Banner */}
+      {/* Step-by-Step Solutions Banner */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-brand-500/10 p-6 shadow-sm dark:border-emerald-500/30 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-brand-950/30">
         <div className="flex items-center gap-3.5">
           <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-md">
@@ -1184,28 +1182,16 @@ export function ResultReviewClient({
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-400/20 dark:text-emerald-300">
                 <Sparkles className="size-3" />
-                Solutions &amp; Report Unlocked
+                Solutions Available
               </span>
             </div>
             <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-white">
-              Detailed Report &amp; Step-by-Step Solutions Available!
+              Step-by-Step Solutions &amp; Analysis
             </h2>
             <p className="text-xs text-slate-600 dark:text-slate-300">
-              Review worked faculty derivations for all questions below. Your complete personalized diagnostic report is ready to view.
+              Review worked faculty derivations and time analysis for all questions below.
             </p>
           </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => handleTabChange('report')}
-            className="shrink-0 rounded-xl border-emerald-500/40 bg-white px-4 py-2.5 font-bold text-emerald-800 shadow-sm hover:bg-emerald-50 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-slate-800"
-          >
-            <Award className="mr-1.5 size-4 text-emerald-600 dark:text-emerald-400" />
-            View 5-Page Board Report
-          </Button>
         </div>
       </div>
 
@@ -1748,8 +1734,8 @@ export function ResultReviewClient({
                   </CardBody>
                 </Card>
 
-                {/* Interstitial banner after every 3 questions */}
-                {isEveryThird && (
+                {/* Interstitial banner after every 3 questions (disabled while reports tab is disabled) */}
+                {false && isEveryThird && (
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-brand-500/10 p-5 sm:p-6 shadow-md dark:border-emerald-500/30 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-brand-950/30">
                     <div className="flex items-center gap-3.5">
                       <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-md">

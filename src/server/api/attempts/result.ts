@@ -94,9 +94,8 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
     .from(profiles)
     .where(eq(profiles.id, attempt.studentId));
 
-  const hasUnlockedSolutions =
-    session.role === 'teacher' ||
-    Boolean(studentProfile?.whatsappConsent && studentProfile?.city);
+  // Worked solutions are disclosed directly to candidates immediately after test submission
+  const hasUnlockedSolutions = true;
 
   const qIds = attempt.questionOrder;
   const optionOrders = (attempt.optionOrders as Record<string, string[]>) ?? {};
