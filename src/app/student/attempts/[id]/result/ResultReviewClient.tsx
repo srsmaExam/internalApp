@@ -397,6 +397,7 @@ export function ResultReviewClient({
 
   useEffect(() => {
     let isCancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let retryCount = 0;
     const maxRetries = 4;
 
@@ -412,6 +413,7 @@ export function ResultReviewClient({
           if (res.status === 403 && json.error === 'awaiting_release') {
             setAwaitingRelease(true);
             setLoading(false);
+            setIsFinalizing(false);
             return;
           }
 
@@ -419,7 +421,7 @@ export function ResultReviewClient({
           if (res.status === 400 && json.error === 'attempt_in_progress' && retryCount < maxRetries) {
             retryCount++;
             setIsFinalizing(true);
-            setTimeout(() => {
+            retryTimer = setTimeout(() => {
               if (!isCancelled) void loadResult();
             }, 1000 * retryCount);
             return;
@@ -431,15 +433,21 @@ export function ResultReviewClient({
         setIsFinalizing(false);
         setData(json);
         setError(null);
+        setLoading(false);
       } catch (err: any) {
-        if (!isCancelled) setError(err.message);
-      } finally {
-        if (!isCancelled && retryCount === 0) setLoading(false);
+        if (!isCancelled) {
+          setError(err.message);
+          setIsFinalizing(false);
+          setLoading(false);
+        }
       }
     }
+
     loadResult();
+
     return () => {
       isCancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
     };
   }, [attemptId]);
 
@@ -496,26 +504,36 @@ export function ResultReviewClient({
   }
 
   if (error || !data) {
+    const isInProgress = error?.toLowerCase().includes('not been submitted yet');
     return (
-      <div className="mx-auto max-w-md p-6 text-center space-y-3">
-        <Alert tone="red" title="Could not load results">
-          <p>{error ?? 'Result not found'}</p>
+      <div className="mx-auto max-w-md p-6 text-center space-y-4">
+        <Alert tone={isInProgress ? 'amber' : 'red'} title={isInProgress ? 'Exam In Progress' : 'Could not load results'}>
+          <p>{isInProgress ? 'This exam attempt has not been submitted yet.' : (error ?? 'Result not found')}</p>
         </Alert>
         <div className="flex items-center justify-center gap-2">
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={() => {
-              setError(null);
-              setLoading(true);
-              window.location.reload();
-            }}
-          >
-            Retry Loading Results
-          </Button>
-          <Link href={userRole === 'teacher' ? '/teacher/tests' : '/student'} className={buttonClass('secondary', 'sm')}>
-            Return
+          {isInProgress ? (
+            <Link
+              href={`/student/attempts/${attemptId}`}
+              className={buttonClass('primary', 'md', 'bg-brand-600 hover:bg-brand-700 text-white font-bold')}
+            >
+              Resume Exam
+            </Link>
+          ) : (
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setError(null);
+                setLoading(true);
+                window.location.reload();
+              }}
+            >
+              Retry Loading Results
+            </Button>
+          )}
+          <Link href={userRole === 'teacher' ? '/teacher/tests' : '/student'} className={buttonClass('secondary', 'md')}>
+            Return to Dashboard
           </Link>
         </div>
       </div>
