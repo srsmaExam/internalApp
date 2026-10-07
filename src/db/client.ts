@@ -98,7 +98,7 @@ async function initialise(): Promise<{ client: ClientQueryable; db: Db }> {
           : undefined;
 
     const pool =
-      globalForDb.__vtpPgPool ??
+      (!isCloudflare ? globalForDb.__vtpPgPool : undefined) ??
       new Pool({
         connectionString: sanitizedUrl,
         ssl: sslOption,
@@ -106,6 +106,26 @@ async function initialise(): Promise<{ client: ClientQueryable; db: Db }> {
         idleTimeoutMillis: isCloudflare ? 1_000 : 15_000,
         connectionTimeoutMillis: 10_000,
       });
+
+    // Auto-retry query once if connection was dropped by edge proxy/pooler
+    const originalQuery = pool.query.bind(pool);
+    pool.query = (async (text: any, params: any) => {
+      try {
+        return await originalQuery(text, params);
+      } catch (err: any) {
+        const isConnDropped =
+          err?.message?.includes('Connection terminated') ||
+          err?.message?.includes('connection terminated') ||
+          err?.code === 'ECONNRESET' ||
+          err?.code === '57P01';
+
+        if (isConnDropped) {
+          console.warn('[db pool] connection dropped, retrying on fresh connection...');
+          return await originalQuery(text, params);
+        }
+        throw err;
+      }
+    }) as any;
 
     pool.on('error', (err) => {
       // In serverless / edge environments (Cloudflare Workers, Vercel), idle TCP connections
@@ -118,7 +138,9 @@ async function initialise(): Promise<{ client: ClientQueryable; db: Db }> {
       }
     });
 
-    globalForDb.__vtpPgPool = pool;
+    if (!isCloudflare) {
+      globalForDb.__vtpPgPool = pool;
+    }
 
     // Never run runtime migrations on serverless / Cloudflare (migrations are pre-applied via CLI)
     const isServerless = Boolean(
@@ -190,6 +212,18 @@ async function initialise(): Promise<{ client: ClientQueryable; db: Db }> {
  * through here.
  */
 export function getDbBundle(): Promise<{ client: ClientQueryable; db: Db }> {
+  const isCloudflare = Boolean(
+    typeof (globalThis as any).WebSocketPair !== 'undefined' ||
+    process.env.CF_PAGES === '1' ||
+    process.env.CLOUDFLARE === '1'
+  );
+
+  if (isCloudflare) {
+    // In Cloudflare Workers, isolates freeze between requests, dropping idle TCP sockets.
+    // Initializing per request guarantees the socket is live and never terminated.
+    return initialise();
+  }
+
   if (!globalForDb.__vtpDb) {
     globalForDb.__vtpDb = initialise().catch((err) => {
       globalForDb.__vtpDb = undefined;
