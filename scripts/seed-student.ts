@@ -6,7 +6,9 @@ const envPath = path.resolve(process.cwd(), '.env');
 if (fs.existsSync(envPath) && typeof process.loadEnvFile === 'function') {
   try {
     process.loadEnvFile(envPath);
-  } catch {}
+  } catch {
+    // ignore
+  }
 }
 
 import { sql } from 'drizzle-orm';

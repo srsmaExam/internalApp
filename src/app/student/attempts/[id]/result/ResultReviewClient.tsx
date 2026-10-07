@@ -1389,13 +1389,11 @@ export function ResultReviewClient({
         })()}
 
         <div className="space-y-4">
-          {filteredQuestions.map((q, idx) => {
+          {filteredQuestions.map((q) => {
             const timeTakenSec = Math.round((q.timeSpentMs ?? 0) / 1000);
             const ets = getQuestionETS(q.metadata?.expectedTime, q.expectedTimeS);
             const qtm = evaluateQuestionTimeManagement(timeTakenSec, ets, q.isCorrect, Boolean(q.isAttempted));
             const isGuesswork = q.isAttempted && timeTakenSec > 0 && timeTakenSec < 8;
-            const isEveryThird =
-              (idx + 1) % 3 === 0 || (filteredQuestions.length < 3 && idx === filteredQuestions.length - 1);
 
             let cardBorder = '';
             if (q.isAttempted) {
@@ -1733,43 +1731,6 @@ export function ResultReviewClient({
                     )}
                   </CardBody>
                 </Card>
-
-                {/* Interstitial banner after every 3 questions (disabled while reports tab is disabled) */}
-                {false && isEveryThird && (
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-brand-500/10 p-5 sm:p-6 shadow-md dark:border-emerald-500/30 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-brand-950/30">
-                    <div className="flex items-center gap-3.5">
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-md">
-                        <CheckCircle2 className="size-6" />
-                      </div>
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-400/20 dark:text-emerald-300">
-                            <Sparkles className="size-3" />
-                            Diagnostic Report Unlocked
-                          </span>
-                        </div>
-                        <h3 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">
-                          Personalized Diagnostic Report Ready
-                        </h3>
-                        <p className="text-xs text-slate-600 dark:text-slate-300">
-                          Deep dive into your chapter-wise mastery, time distribution, and accuracy trends.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => handleTabChange('report')}
-                        className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold"
-                      >
-                        <Award className="mr-1.5 size-4" />
-                        View 5-Page Board Report
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </div>
             );
           })}
