@@ -39,6 +39,20 @@ function getKey(): Uint8Array {
     return cachedKey;
   }
 
+  const isServerless = Boolean(
+    process.env.VERCEL === '1' ||
+    process.env.CF_PAGES === '1' ||
+    process.env.CLOUDFLARE === '1' ||
+    process.env.NODE_ENV === 'production' ||
+    typeof (globalThis as any).WebSocketPair !== 'undefined'
+  );
+
+  if (isServerless) {
+    const fallback = randomBytes(32).toString('base64url');
+    cachedKey = new TextEncoder().encode(fallback);
+    return cachedKey;
+  }
+
   ensureDataDirs();
   const secretFile = path.join(DATA_DIR, '.session-secret');
   let secret: string;
@@ -46,8 +60,12 @@ function getKey(): Uint8Array {
     secret = fs.readFileSync(secretFile, 'utf8').trim();
   } else {
     secret = randomBytes(32).toString('base64url');
-    fs.writeFileSync(secretFile, secret, { mode: 0o600 });
-    console.log('[auth] generated a session secret at data/.session-secret');
+    try {
+      fs.writeFileSync(secretFile, secret, { mode: 0o600 });
+      console.log('[auth] generated a session secret at data/.session-secret');
+    } catch {
+      // Read-only filesystem
+    }
   }
   cachedKey = new TextEncoder().encode(secret);
   return cachedKey;

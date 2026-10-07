@@ -39,10 +39,21 @@ export function isExternalDb(): boolean {
  * falling back to process.env.DATABASE_URL.
  */
 async function getActiveDatabaseUrl(): Promise<string | null> {
+  // 1. Direct process.env check (populated by Node, .env, or Cloudflare vars)
+  if (process.env.DATABASE_URL && process.env.DATABASE_URL.trim().length > 0) {
+    return process.env.DATABASE_URL.trim();
+  }
+
+  // 2. Cloudflare Worker request context (Bindings & Environment Variables)
   try {
     const { getCloudflareContext } = await import('@opennextjs/cloudflare');
-    const cfContext = getCloudflareContext();
-    const cfEnv = cfContext?.env as Record<string, unknown> | undefined;
+    let cfContext: any;
+    try {
+      cfContext = await getCloudflareContext({ async: true });
+    } catch {
+      cfContext = getCloudflareContext();
+    }
+    const cfEnv = cfContext?.env as Record<string, any> | undefined;
     const hyperdrive = cfEnv?.HYPERDRIVE as { connectionString?: string } | undefined;
     const databaseBinding = cfEnv?.DATABASE as { connectionString?: string } | undefined;
     if (hyperdrive?.connectionString) return hyperdrive.connectionString;
@@ -51,12 +62,9 @@ async function getActiveDatabaseUrl(): Promise<string | null> {
       return cfEnv.DATABASE_URL.trim();
     }
   } catch {
-    // Outside of Cloudflare request context (CLI scripts, local dev, or standard Node)
+    // Outside of Cloudflare request context
   }
 
-  if (process.env.DATABASE_URL && process.env.DATABASE_URL.trim().length > 0) {
-    return process.env.DATABASE_URL.trim();
-  }
   return null;
 }
 
@@ -127,7 +135,21 @@ async function initialise(): Promise<{ client: ClientQueryable; db: Db }> {
     return { client: pool, db };
   }
 
-  // Fallback: Local development with embedded PGlite (dynamically imported so it is never bundled in production serverless)
+  // Fallback: Local development with embedded PGlite (never run in production/edge)
+  const isServerlessOrProd = Boolean(
+    process.env.NODE_ENV === 'production' ||
+    process.env.VERCEL === '1' ||
+    process.env.CF_PAGES === '1' ||
+    process.env.CLOUDFLARE === '1' ||
+    typeof (globalThis as any).WebSocketPair !== 'undefined'
+  );
+
+  if (isServerlessOrProd) {
+    throw new Error(
+      '[db] DATABASE_URL is not configured in Cloudflare. Please set DATABASE_URL in wrangler.jsonc vars or Cloudflare Dashboard > Settings > Variables and Secrets.'
+    );
+  }
+
   ensureDataDirs();
   const { PGlite: PGliteClass } = await import('@electric-sql/pglite');
   const { drizzle: drizzlePglite } = await import('drizzle-orm/pglite');

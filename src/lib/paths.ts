@@ -16,9 +16,22 @@ export const MIGRATIONS_DIR = path.resolve(process.cwd(), 'drizzle');
 export const PROMPTS_DIR = path.resolve(process.cwd(), 'prompts');
 
 export function ensureDataDirs(): void {
+  // In serverless / edge environments (Cloudflare Workers / Vercel), there is no writable filesystem.
+  if (
+    process.env.VERCEL === '1' ||
+    process.env.CF_PAGES === '1' ||
+    process.env.CLOUDFLARE === '1' ||
+    process.env.NODE_ENV === 'production' ||
+    typeof (globalThis as any).WebSocketPair !== 'undefined'
+  ) {
+    return;
+  }
+
   for (const dir of [DATA_DIR, PAPERS_DIR, IMAGES_DIR, BACKUPS_DIR]) {
     try {
-      fs.mkdirSync(dir, { recursive: true });
+      if (typeof fs?.mkdirSync === 'function') {
+        fs.mkdirSync(dir, { recursive: true });
+      }
     } catch {
       // In serverless / read-only environments (e.g. Vercel /var/task),
       // filesystem creation is not permitted; data is persisted in PostgreSQL.

@@ -20,6 +20,16 @@ export type FileMetadata = {
   sha256: string;
 };
 
+function isServerlessRuntime(): boolean {
+  return Boolean(
+    process.env.VERCEL === '1' ||
+    process.env.CF_PAGES === '1' ||
+    process.env.CLOUDFLARE === '1' ||
+    process.env.NODE_ENV === 'production' ||
+    typeof (globalThis as any).WebSocketPair !== 'undefined'
+  );
+}
+
 /**
  * Bounded in-memory LRU cache for serverless warm lambdas.
  * Prevents re-querying Supabase database for the same images across requests.
@@ -100,13 +110,15 @@ export async function saveBufferWithHash(
     console.warn('[storage] failed to write to database stored_files:', dbErr);
   }
 
-  // 2. Attempt to mirror to disk (works on local PC; gracefully skipped in read-only serverless)
-  try {
-    const absPath = resolveDataPath(relativeKey);
-    await fsp.mkdir(path.dirname(absPath), { recursive: true });
-    await fsp.writeFile(absPath, bytes);
-  } catch {
-    // Disk write skipped on read-only serverless filesystems
+  // 2. Attempt to mirror to disk (works on local PC; skipped in serverless / Cloudflare)
+  if (!isServerlessRuntime()) {
+    try {
+      const absPath = resolveDataPath(relativeKey);
+      await fsp.mkdir(path.dirname(absPath), { recursive: true });
+      await fsp.writeFile(absPath, bytes);
+    } catch {
+      // Disk write skipped on read-only serverless filesystems
+    }
   }
 
   return { absPath: relativeKey, sha256, size: bytes.length };
@@ -126,24 +138,26 @@ export async function getFileMetadata(relativeKey: string): Promise<FileMetadata
     return { contentType: cached.contentType, size: cached.size, sha256: cached.sha256 };
   }
 
-  try {
-    const abs = resolveDataPath(relativeKey);
-    if (fs.existsSync(abs)) {
-      const stat = await fsp.stat(abs);
-      const ext = path.extname(abs).toLowerCase();
-      const contentType =
-        ext === '.webp'
-          ? 'image/webp'
-          : ext === '.pdf'
-            ? 'application/pdf'
-            : 'application/octet-stream';
-      // For disk files, read buffer to get sha256 (local dev is fast)
-      const buffer = await fsp.readFile(abs);
-      const sha256 = createHash('sha256').update(buffer).digest('hex');
-      return { contentType, size: stat.size, sha256 };
+  if (!isServerlessRuntime()) {
+    try {
+      const abs = resolveDataPath(relativeKey);
+      if (fs.existsSync(abs)) {
+        const stat = await fsp.stat(abs);
+        const ext = path.extname(abs).toLowerCase();
+        const contentType =
+          ext === '.webp'
+            ? 'image/webp'
+            : ext === '.pdf'
+              ? 'application/pdf'
+              : 'application/octet-stream';
+        // For disk files, read buffer to get sha256 (local dev is fast)
+        const buffer = await fsp.readFile(abs);
+        const sha256 = createHash('sha256').update(buffer).digest('hex');
+        return { contentType, size: stat.size, sha256 };
+      }
+    } catch {
+      // Disk not available
     }
-  } catch {
-    // Disk not available
   }
 
   try {
@@ -182,24 +196,26 @@ export async function readFileRecord(relativeKey: string): Promise<FileRecord | 
   }
 
   // 1. Try disk first (fastest for local development)
-  try {
-    const abs = resolveDataPath(relativeKey);
-    if (fs.existsSync(abs)) {
-      const buffer = await fsp.readFile(abs);
-      const ext = path.extname(abs).toLowerCase();
-      const contentType =
-        ext === '.webp'
-          ? 'image/webp'
-          : ext === '.pdf'
-            ? 'application/pdf'
-            : 'application/octet-stream';
-      const sha256 = createHash('sha256').update(buffer).digest('hex');
-      const rec = { buffer, contentType, size: buffer.length, sha256 };
-      putMemoryCache(relativeKey, rec);
-      return rec;
+  if (!isServerlessRuntime()) {
+    try {
+      const abs = resolveDataPath(relativeKey);
+      if (fs.existsSync(abs)) {
+        const buffer = await fsp.readFile(abs);
+        const ext = path.extname(abs).toLowerCase();
+        const contentType =
+          ext === '.webp'
+            ? 'image/webp'
+            : ext === '.pdf'
+              ? 'application/pdf'
+              : 'application/octet-stream';
+        const sha256 = createHash('sha256').update(buffer).digest('hex');
+        const rec = { buffer, contentType, size: buffer.length, sha256 };
+        putMemoryCache(relativeKey, rec);
+        return rec;
+      }
+    } catch {
+      // Disk not available or read error
     }
-  } catch {
-    // Disk not available or read error
   }
 
   // 2. Fall back to PostgreSQL database
@@ -231,6 +247,9 @@ export async function readBuffer(relativeKey: string): Promise<Buffer> {
 }
 
 export function existsSync(relativeKey: string): boolean {
+  if (isServerlessRuntime()) {
+    return memoryCache.has(relativeKey);
+  }
   try {
     return fs.existsSync(resolveDataPath(relativeKey));
   } catch {
@@ -253,11 +272,13 @@ export async function deleteIfExists(relativeKey: string): Promise<void> {
     // DB delete failed or table not found
   }
 
-  try {
-    const abs = resolveDataPath(relativeKey);
-    await fsp.rm(abs, { force: true });
-  } catch {
-    // Disk delete failed
+  if (!isServerlessRuntime()) {
+    try {
+      const abs = resolveDataPath(relativeKey);
+      await fsp.rm(abs, { force: true });
+    } catch {
+      // Disk delete failed
+    }
   }
 }
 
@@ -284,10 +305,12 @@ export async function deleteQuestionImageDir(questionId: string): Promise<void> 
     // Ignore
   }
 
-  try {
-    await fsp.rm(resolveDataPath(`images/${questionId}`), { recursive: true, force: true });
-  } catch {
-    // Ignore
+  if (!isServerlessRuntime()) {
+    try {
+      await fsp.rm(resolveDataPath(`images/${questionId}`), { recursive: true, force: true });
+    } catch {
+      // Ignore
+    }
   }
 }
 
