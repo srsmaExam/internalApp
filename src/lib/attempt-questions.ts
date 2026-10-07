@@ -1,7 +1,7 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import { HttpError } from '@/lib/http';
 import type { Db } from '@/db/client';
-import { attemptAnswers, questions, testQuestions } from '@/db/schema';
+import { attemptAnswers, questions, testQuestions, type AnswerModificationMeta } from '@/db/schema';
 import { toStudentQuestion, type StudentQuestionDto } from '@/lib/dto';
 
 export type AttemptQuestionDto = StudentQuestionDto & {
@@ -9,6 +9,12 @@ export type AttemptQuestionDto = StudentQuestionDto & {
   response: unknown;
   timeSpentMs: number;
   visitCount: number;
+  solveOrder?: number | null;
+  firstActionTimeMs?: number | null;
+  firstActionType?: string | null;
+  visitTimesMs?: number[];
+  answerModifications?: AnswerModificationMeta | null;
+  modifiedAfter15s?: boolean;
 };
 
 /**
@@ -55,10 +61,15 @@ export async function loadAttemptQuestions(
       state: attemptAnswers.state,
       timeSpentMs: attemptAnswers.timeSpentMs,
       visitCount: attemptAnswers.visitCount,
+      solveOrder: attemptAnswers.solveOrder,
+      firstActionTimeMs: attemptAnswers.firstActionTimeMs,
+      firstActionType: attemptAnswers.firstActionType,
+      visitTimesMs: attemptAnswers.visitTimesMs,
+      answerModifications: attemptAnswers.answerModifications,
+      modifiedAfter15s: attemptAnswers.modifiedAfter15s,
     })
     .from(attemptAnswers)
     .where(eq(attemptAnswers.attemptId, attemptId));
-
 
   const questionsMap = new Map(rawQuestions.map((q) => [q.id, q]));
   const answersMap = new Map(answers.map((a) => [a.questionId, a]));
@@ -86,6 +97,12 @@ export async function loadAttemptQuestions(
       response: savedAnswer?.response ?? null,
       timeSpentMs: savedAnswer?.timeSpentMs ?? 0,
       visitCount: savedAnswer?.visitCount ?? 0,
+      solveOrder: savedAnswer?.solveOrder ?? null,
+      firstActionTimeMs: savedAnswer?.firstActionTimeMs ?? null,
+      firstActionType: savedAnswer?.firstActionType ?? null,
+      visitTimesMs: (savedAnswer?.visitTimesMs as number[]) ?? [],
+      answerModifications: (savedAnswer?.answerModifications as AnswerModificationMeta) ?? null,
+      modifiedAfter15s: Boolean(savedAnswer?.modifiedAfter15s),
     };
   });
 

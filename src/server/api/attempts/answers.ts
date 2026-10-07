@@ -25,6 +25,20 @@ const patchAnswersSchema = z.object({
         .optional(),
       timeSpentMs: z.number().int().min(0).optional(),
       visitCount: z.number().int().min(0).optional(),
+      solveOrder: z.number().int().positive().nullable().optional(),
+      firstActionTimeMs: z.number().int().min(0).nullable().optional(),
+      firstActionType: z.string().nullable().optional(),
+      visitTimesMs: z.array(z.number().int().min(0)).optional(),
+      answerModifications: z
+        .object({
+          count: z.number().int().min(0),
+          modifiedAfter15s: z.boolean(),
+          after15sCount: z.number().int().min(0),
+          history: z.array(z.any()),
+        })
+        .nullable()
+        .optional(),
+      modifiedAfter15s: z.boolean().optional(),
     }),
   ),
 });

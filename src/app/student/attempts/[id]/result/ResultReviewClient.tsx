@@ -17,6 +17,8 @@ import {
   Calculator,
   Atom,
   BookOpen,
+  Layers,
+  ChevronRight,
 } from 'lucide-react';
 import { Alert, Badge, buttonClass, Card, CardBody, Spinner, Button, Input, Label } from '@/components/ui';
 import { Dialog } from '@/components/Dialog';
@@ -58,6 +60,24 @@ type ReviewQuestion = {
   isAttempted: boolean;
   marksAwarded: number;
   timeSpentMs: number;
+  visitCount?: number;
+  solveOrder?: number | null;
+  firstActionTimeMs?: number | null;
+  firstActionType?: string | null;
+  visitTimesMs?: number[];
+  answerModifications?: {
+    count: number;
+    modifiedAfter15s: boolean;
+    after15sCount: number;
+    history: Array<{
+      from?: { key?: string; value?: number | string } | null;
+      to?: { key?: string; value?: number | string } | null;
+      elapsedMs: number;
+      isAfter15s: boolean;
+      timestamp: string;
+    }>;
+  } | null;
+  modifiedAfter15s?: boolean;
   isOvertime: boolean;
 };
 
@@ -75,6 +95,7 @@ type ResultData = {
   rank: number;
   percentile: number;
   totalParticipants: number;
+  solveOrder?: string[];
   studentId?: string;
   studentName?: string;
   gender?: 'Male' | 'Female' | string | null;
@@ -125,17 +146,18 @@ export function ResultReviewClient({
   const [error, setError] = useState<string | null>(null);
   const [awaitingRelease, setAwaitingRelease] = useState(false);
 
-  // Tab View state: 'report' or 'solutions' (Default to 'report')
-  const initialTab = searchParams?.get('tab') === 'solutions' ? 'solutions' : 'report';
-  const [activeViewTab, setActiveViewTab] = useState<'solutions' | 'report'>(initialTab);
+  // Tab View state: 'report' or 'solutions' (Default to 'solutions' - report tab disabled for now)
+  const initialTab = 'solutions';
+  const [activeViewTab, setActiveViewTab] = useState<'solutions' | 'report'>('solutions');
 
   useEffect(() => {
-    const tabParam = searchParams?.get('tab');
-    if (tabParam === 'solutions') setActiveViewTab('solutions');
-    else if (tabParam === 'report') setActiveViewTab('report');
+    // Report tab is disabled for now (Maths-only tests)
+    setActiveViewTab('solutions');
   }, [searchParams]);
 
   const handleTabChange = (tab: 'solutions' | 'report') => {
+    // Report tab is disabled for now
+    if (tab === 'report') return;
     setActiveViewTab(tab);
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
@@ -173,55 +195,10 @@ export function ResultReviewClient({
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
 
+  // Disabled as per user requirement (Maths-only tests, avoids division by 0 and unnecessary computation)
+  // Preserved for when multi-subject board challenge tests are re-enabled
   const attemptDiagnosticReport = useMemo(() => {
-    if (!data?.questions || data.questions.length === 0) return null;
-    const metadataList: QuestionMetadataItem[] = data.questions.map((q, idx) => {
-      const m = q.metadata || {};
-      return {
-        qno: q.position || idx + 1,
-        subject:
-          q.subject === 'maths'
-            ? 'Maths'
-            : q.subject.charAt(0).toUpperCase() + q.subject.slice(1),
-        chapter: q.chapter || 'General',
-        topic: q.topic || 'General',
-        conceptTested: m.conceptTested || null,
-        prerequisiteConcept: m.prerequisiteConcept || null,
-        difficulty:
-          m.difficultyLabel ||
-          (q.difficulty === 1 ? 'Easy' : q.difficulty === 3 ? 'Difficult' : 'Medium'),
-        primarySkill: m.primarySkill || 'Concept Application',
-        secondarySkill: m.secondarySkill || null,
-        questionStructure: m.questionStructure || 'Direct',
-        visualDependency: m.visualDependency || 'None',
-        expectedTime: m.expectedTime || `${q.expectedTimeS || 60}`,
-        answer:
-          typeof q.answer === 'object' && (q.answer as any)?.key
-            ? (q.answer as any).key
-            : typeof q.answer === 'object' && (q.answer as any)?.value !== undefined
-              ? String((q.answer as any).value)
-              : String(q.answer || 'A'),
-        diagnosticWeight: Number(m.diagnosticWeight || 1),
-      };
-    });
-
-    const responses: StudentQuestionResponse[] = data.questions.map((q, idx) => ({
-      qno: q.position || idx + 1,
-      attempted: Boolean(q.isAttempted),
-      selectedOption:
-        q.response && typeof q.response === 'object' && (q.response as any)?.key
-          ? (q.response as any).key
-          : (q.response as any)?.value !== undefined
-            ? String((q.response as any).value)
-            : null,
-      timeTakenSeconds: Math.round((q.timeSpentMs || 0) / 1000),
-    }));
-
-    return evaluateDiagnosticReport(metadataList, {
-      studentName: data?.studentName || 'Student',
-      studentGender: data?.gender || gender || null,
-      responses,
-    });
+    return null;
   }, [data, gender]);
 
   const timeManagementMetrics = useMemo(() => {
@@ -407,8 +384,8 @@ export function ResultReviewClient({
         }
       }
 
-      // Direct student to reports Tab immediately after form submission
-      handleTabChange('report');
+      // Direct student to solutions Tab immediately after form submission
+      handleTabChange('solutions');
     } catch (err: any) {
       setReportError(err.message || 'Could not unlock solutions and report.');
     } finally {
@@ -416,12 +393,20 @@ export function ResultReviewClient({
     }
   }
 
+  const [isFinalizing, setIsFinalizing] = useState(false);
+
   useEffect(() => {
+    let isCancelled = false;
+    let retryCount = 0;
+    const maxRetries = 4;
+
     async function loadResult() {
       try {
         setLoading(true);
         const res = await fetch(`/api/attempts/${attemptId}/result`);
         const json = await res.json();
+
+        if (isCancelled) return;
 
         if (!res.ok) {
           if (res.status === 403 && json.error === 'awaiting_release') {
@@ -429,17 +414,33 @@ export function ResultReviewClient({
             setLoading(false);
             return;
           }
+
+          // If the attempt was just submitted and is still finalizing in the database, retry automatically
+          if (res.status === 400 && json.error === 'attempt_in_progress' && retryCount < maxRetries) {
+            retryCount++;
+            setIsFinalizing(true);
+            setTimeout(() => {
+              if (!isCancelled) void loadResult();
+            }, 1000 * retryCount);
+            return;
+          }
+
           throw new Error(json.message || 'Failed to load test results');
         }
 
+        setIsFinalizing(false);
         setData(json);
+        setError(null);
       } catch (err: any) {
-        setError(err.message);
+        if (!isCancelled) setError(err.message);
       } finally {
-        setLoading(false);
+        if (!isCancelled && retryCount === 0) setLoading(false);
       }
     }
     loadResult();
+    return () => {
+      isCancelled = true;
+    };
   }, [attemptId]);
 
   const filteredQuestions = useMemo(() => {
@@ -459,16 +460,20 @@ export function ResultReviewClient({
       if (filterStatus === 'medium_time' && (!q.isAttempted || qtm.rating !== 'Moderate')) return false;
       if (filterStatus === 'poor_time' && (!q.isAttempted || qtm.rating !== 'Needs Intervention')) return false;
       if (filterStatus === 'guesswork' && (!q.isAttempted || timeTakenSec >= 8)) return false;
+      if (filterStatus === 'revisited' && (!q.visitCount || q.visitCount <= 1) && (!q.visitTimesMs || q.visitTimesMs.length <= 1)) return false;
+      if (filterStatus === 'modified' && !q.modifiedAfter15s) return false;
 
       return true;
     });
   }, [data, filterSubject, filterStatus]);
 
-  if (loading) {
+  if (loading || isFinalizing) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-slate-500 dark:text-slate-400">
         <Spinner className="size-8 text-brand-700 dark:text-brand-400" />
-        <p className="text-sm font-medium">Loading scorecard and worked solutions...</p>
+        <p className="text-sm font-medium">
+          {isFinalizing ? 'Finalizing and grading test results…' : 'Loading scorecard and worked solutions…'}
+        </p>
       </div>
     );
   }
@@ -492,13 +497,27 @@ export function ResultReviewClient({
 
   if (error || !data) {
     return (
-      <div className="mx-auto max-w-md p-6 text-center">
-        <Alert tone="red" title="Error">
-          {error ?? 'Result not found'}
+      <div className="mx-auto max-w-md p-6 text-center space-y-3">
+        <Alert tone="red" title="Could not load results">
+          <p>{error ?? 'Result not found'}</p>
         </Alert>
-        <Link href={userRole === 'teacher' ? '/teacher/tests' : '/student'} className={buttonClass('secondary', 'md', 'mt-4')}>
-          Return
-        </Link>
+        <div className="flex items-center justify-center gap-2">
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              window.location.reload();
+            }}
+          >
+            Retry Loading Results
+          </Button>
+          <Link href={userRole === 'teacher' ? '/teacher/tests' : '/student'} className={buttonClass('secondary', 'sm')}>
+            Return
+          </Link>
+        </div>
       </div>
     );
   }
@@ -553,8 +572,8 @@ export function ResultReviewClient({
               </span>
             </div>
 
-            {/* 3 Score Cards: Total Marks, Maths Marks, Science Marks */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-3.5">
+            {/* Score Cards: Total Marks, Maths Marks, and Science Marks (if present) */}
+            <div className={`grid gap-2 sm:gap-3.5 ${scienceStats.total > 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
               {/* Total Marks */}
               <div className="rounded-xl bg-white/10 p-2.5 sm:p-4 border border-white/10 backdrop-blur-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-1.5 sm:p-3 opacity-15 group-hover:opacity-25 transition">
@@ -591,23 +610,25 @@ export function ResultReviewClient({
                 </div>
               </div>
 
-              {/* Science Marks */}
-              <div className="rounded-xl bg-white/10 p-2.5 sm:p-4 border border-white/10 backdrop-blur-sm relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-1.5 sm:p-3 opacity-15 group-hover:opacity-25 transition">
-                  <Atom className="size-6 sm:size-10 text-emerald-300" />
+              {/* Science Marks (only shown if paper contains Science questions) */}
+              {scienceStats.total > 0 && (
+                <div className="rounded-xl bg-white/10 p-2.5 sm:p-4 border border-white/10 backdrop-blur-sm relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-1.5 sm:p-3 opacity-15 group-hover:opacity-25 transition">
+                    <Atom className="size-6 sm:size-10 text-emerald-300" />
+                  </div>
+                  <p className="text-[10px] sm:text-xs uppercase font-bold text-emerald-300 tracking-wider truncate">Science</p>
+                  <div className="mt-1 sm:mt-1.5 flex items-baseline gap-1">
+                    <span className="text-xl sm:text-4xl font-black text-white">{scienceStats.marks}</span>
+                    <span className="text-xs sm:text-sm font-semibold text-slate-300">/ {scienceStats.maxMarks}</span>
+                  </div>
+                  <div className="mt-1 sm:mt-2 flex items-center gap-1 text-[10px] sm:text-xs text-slate-300">
+                    <span className="font-semibold text-emerald-300">
+                      {scienceStats.correct}/{scienceStats.total}
+                    </span>
+                    <span className="hidden xs:inline truncate">correct</span>
+                  </div>
                 </div>
-                <p className="text-[10px] sm:text-xs uppercase font-bold text-emerald-300 tracking-wider truncate">Science</p>
-                <div className="mt-1 sm:mt-1.5 flex items-baseline gap-1">
-                  <span className="text-xl sm:text-4xl font-black text-white">{scienceStats.marks}</span>
-                  <span className="text-xs sm:text-sm font-semibold text-slate-300">/ {scienceStats.maxMarks}</span>
-                </div>
-                <div className="mt-1 sm:mt-2 flex items-center gap-1 text-[10px] sm:text-xs text-slate-300">
-                  <span className="font-semibold text-emerald-300">
-                    {scienceStats.correct}/{scienceStats.total}
-                  </span>
-                  <span className="hidden xs:inline truncate">correct</span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -944,15 +965,15 @@ export function ResultReviewClient({
         <div className="flex gap-1 sm:gap-2 overflow-x-auto no-scrollbar max-w-full">
           <button
             type="button"
-            onClick={() => handleTabChange('report')}
-            className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 sm:gap-2 border-b-2 px-3.5 sm:px-5 py-3 text-xs sm:text-sm font-bold transition-colors ${
-              activeViewTab === 'report'
-                ? 'border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300'
-                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
+            disabled
+            className="shrink-0 whitespace-nowrap flex items-center gap-1.5 sm:gap-2 border-b-2 px-3.5 sm:px-5 py-3 text-xs sm:text-sm font-bold border-transparent text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-60"
+            title="5-Page Board Report is temporarily disabled for single-subject Maths tests"
           >
             <Award className="size-4" />
             5-Page Board Report
+            <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
+              Disabled
+            </span>
           </button>
 
           <button
@@ -967,32 +988,6 @@ export function ResultReviewClient({
             <BookOpen className="size-4" />
             Solutions &amp; Review
           </button>
-        </div>
-
-        <div className="hidden sm:flex items-center gap-2">
-          {activeViewTab === 'solutions' ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => handleTabChange('report')}
-              className="text-xs font-bold"
-            >
-              <Award className="mr-1.5 size-3.5 text-brand-600" />
-              View 5-Page Board Report
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => handleTabChange('solutions')}
-              className="text-xs font-bold"
-            >
-              <BookOpen className="mr-1.5 size-3.5 text-brand-600" />
-              View Solutions
-            </Button>
-          )}
         </div>
       </div>
 
@@ -1224,6 +1219,8 @@ export function ResultReviewClient({
                 { id: 'correct', label: 'Correct' },
                 { id: 'wrong', label: 'Wrong' },
                 { id: 'unattempted', label: 'Unattempted' },
+                { id: 'revisited', label: '🔄 Revisited' },
+                { id: 'modified', label: '⚠️ Modified (>15s)' },
                 { id: 'good_time', label: 'Good Time' },
                 { id: 'medium_time', label: 'Medium Time' },
                 { id: 'poor_time', label: 'Poor Time (>2x ETS)' },
@@ -1241,6 +1238,151 @@ export function ResultReviewClient({
             </div>
           </div>
         </div>
+
+        {/* Attempt Behavioral Telemetry & Solving Strategy Section */}
+        {(() => {
+          const solvedList = [...(data?.questions || [])]
+            .filter((q) => q.solveOrder !== null && q.solveOrder !== undefined)
+            .sort((a, b) => (a.solveOrder ?? 0) - (b.solveOrder ?? 0));
+          const revisitedList = (data?.questions || []).filter(
+            (q) => (q.visitCount && q.visitCount > 1) || (q.visitTimesMs && q.visitTimesMs.length > 1),
+          );
+          const modifiedAfter15sList = (data?.questions || []).filter((q) => q.modifiedAfter15s);
+          const withFirstAction = (data?.questions || []).filter(
+            (q) => q.firstActionTimeMs !== null && q.firstActionTimeMs !== undefined,
+          );
+          const avgFirstActionS =
+            withFirstAction.length > 0
+              ? Math.round(
+                  withFirstAction.reduce((sum, q) => sum + (q.firstActionTimeMs ?? 0), 0) /
+                    withFirstAction.length /
+                    1000,
+                )
+              : 0;
+
+          return (
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+                    <Layers className="size-4.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                      Student Attempt Telemetry & Solving Strategy
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Detailed chronological telemetry captured during this student’s paper attempt
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    Solved: <span className="text-slate-900 dark:text-slate-100 font-bold">{solvedList.length}</span> / {data.questions.length} Qs
+                  </span>
+                </div>
+              </div>
+
+              {/* 4 Summary Cards */}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {/* 1. Solving Order */}
+                <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    1. Solving Sequence
+                  </span>
+                  <div className="mt-1 text-lg font-black text-violet-600 dark:text-violet-400">
+                    {solvedList.length} Solved
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                    {solvedList.length > 0 ? `Started with Q${solvedList[0].position}` : 'No answers logged'}
+                  </p>
+                </div>
+
+                {/* 2. Re-visits & Split Time */}
+                <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    2. Re-visits & Splits
+                  </span>
+                  <div className="mt-1 text-lg font-black text-sky-600 dark:text-sky-400">
+                    {revisitedList.length} Questions
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                    Revisited in multiple passes
+                  </p>
+                </div>
+
+                {/* 3. Modifications (>15s) */}
+                <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    3. Modified (&gt;15s)
+                  </span>
+                  <div className={`mt-1 text-lg font-black ${modifiedAfter15sList.length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                    {modifiedAfter15sList.length} Questions
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                    {modifiedAfter15sList.length > 0 ? 'Confidence / doubt shifts' : 'Direct decision confidence'}
+                  </p>
+                </div>
+
+                {/* 4. Time to First Action */}
+                <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    4. First Action Pacing
+                  </span>
+                  <div className="mt-1 text-lg font-black text-indigo-600 dark:text-indigo-400">
+                    {avgFirstActionS}s Avg
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                    Decision before answer/skip
+                  </p>
+                </div>
+              </div>
+
+              {/* Order of Solving Questions Visual Chain */}
+              {solvedList.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <span>Chronological Solving Flow:</span>
+                    <span className="text-[11px] font-normal text-slate-500">
+                      (in exact sequence attempted)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+                    {solvedList.map((sq, sIdx) => {
+                      const isCorrect = sq.isCorrect === true;
+                      const isWrong = sq.isCorrect === false;
+                      return (
+                        <div
+                          key={sq.id}
+                          className="flex items-center shrink-0 gap-1.5"
+                        >
+                          <div
+                            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium shadow-2xs ${
+                              isCorrect
+                                ? 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200'
+                                : isWrong
+                                  ? 'border-red-300 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200'
+                                  : 'border-slate-200 bg-slate-50 text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                            }`}
+                            title={`Solved #${sq.solveOrder} • Q${sq.position} (${sq.subject}) • ${Math.round((sq.timeSpentMs || 0) / 1000)}s`}
+                          >
+                            <span className="font-extrabold text-[10px] opacity-75">#{sq.solveOrder}</span>
+                            <span className="font-bold">Q{sq.position}</span>
+                            <span>{isCorrect ? '✓' : isWrong ? '✗' : '—'}</span>
+                            <span className="text-[11px] opacity-75">{Math.round((sq.timeSpentMs || 0) / 1000)}s</span>
+                          </div>
+                          {sIdx < solvedList.length - 1 && (
+                            <ChevronRight className="size-3 text-slate-400 shrink-0" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         <div className="space-y-4">
           {filteredQuestions.map((q, idx) => {
@@ -1343,6 +1485,77 @@ export function ResultReviewClient({
                           </span>
                         )}
                       </div>
+                    </div>
+
+                    {/* Student Attempt Telemetry Strip */}
+                    <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50/90 px-3 py-2 text-xs border border-slate-200/70 dark:border-slate-800 dark:bg-slate-900/60">
+                      {/* 1. Solve Order */}
+                      {q.solveOrder ? (
+                        <span className="inline-flex items-center gap-1 font-bold text-violet-700 dark:text-violet-300 bg-violet-100/80 dark:bg-violet-950/80 px-2 py-0.5 rounded-md">
+                          ⚡ Solved #{q.solveOrder}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                          Not Solved
+                        </span>
+                      )}
+
+                      {/* 6. Time to First Action */}
+                      {q.firstActionTimeMs !== null && q.firstActionTimeMs !== undefined && (
+                        <span
+                          className="inline-flex items-center gap-1 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 shadow-2xs"
+                          title="Reading / decision time elapsed before taking first action on this question"
+                        >
+                          ⏱️ First Action:{' '}
+                          <span className="font-semibold">{Math.round(q.firstActionTimeMs / 1000)}s</span>
+                          <span className="text-slate-500 dark:text-slate-400 capitalize">
+                            ({q.firstActionType === 'answered' ? 'Answered' : q.firstActionType === 'skipped' ? 'Skipped' : 'Flagged'})
+                          </span>
+                        </span>
+                      )}
+
+                      {/* 5. Re-visits and Split Times */}
+                      {((q.visitTimesMs && q.visitTimesMs.length > 1) || (q.visitCount && q.visitCount > 1)) ? (
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span className="inline-flex items-center gap-1 font-semibold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/60 px-2 py-0.5 rounded-md">
+                            🔄 {q.visitTimesMs?.length || q.visitCount} Visits:
+                          </span>
+                          {(q.visitTimesMs && q.visitTimesMs.length > 0
+                            ? q.visitTimesMs
+                            : [q.timeSpentMs || 0]
+                          ).map((vMs, vIdx) => (
+                            <span
+                              key={vIdx}
+                              className="rounded bg-sky-100/70 dark:bg-sky-900/40 px-1.5 py-0.5 text-[11px] font-medium text-sky-800 dark:text-sky-200"
+                            >
+                              Visit {vIdx + 1}: {Math.round(vMs / 1000)}s
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-400">
+                          1 Visit ({timeTakenSec}s)
+                        </span>
+                      )}
+
+                      {/* 4. Answer Modifications */}
+                      {q.answerModifications && q.answerModifications.count > 0 && (
+                        q.modifiedAfter15s ? (
+                          <span
+                            className="inline-flex items-center gap-1 font-semibold text-amber-800 dark:text-amber-300 bg-amber-100/90 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-800 px-2 py-0.5 rounded-md"
+                            title={`Answer was changed >15s after initial selection (${q.answerModifications.count} modifications, indicates hesitation/confidence adjustment)`}
+                          >
+                            ⚠️ Modified after &gt;15s ({q.answerModifications.count}× edit)
+                          </span>
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md"
+                            title="Answer was edited within 15 seconds (likely typo/misclick)"
+                          >
+                            ✏️ Quick Edit (&lt;15s)
+                          </span>
+                        )
+                      )}
                     </div>
 
                     {/* Diagnostic Concept Info */}

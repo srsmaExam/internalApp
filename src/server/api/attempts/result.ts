@@ -4,6 +4,7 @@ import { HttpError, json, withApi } from '@/lib/http';
 import { getDb } from '@/db/client';
 import { attemptAnswers, attempts, profiles, questions, testQuestions, tests, type QuestionOption } from '@/db/schema';
 import { isGradeableResponse } from '@/lib/grading';
+import { gradeAndCloseAttempt } from '@/lib/attempts';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -14,7 +15,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
   const { id: attemptId } = await params;
   const db = await getDb();
 
-  const [attempt] = await db.select().from(attempts).where(eq(attempts.id, attemptId));
+  let [attempt] = await db.select().from(attempts).where(eq(attempts.id, attemptId));
   if (!attempt) throw new HttpError(404, 'not_found', 'Attempt not found');
 
   if (session.role === 'student' && attempt.studentId !== session.userId) {
@@ -22,7 +23,14 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
   }
 
   if (attempt.status === 'in_progress') {
-    throw new HttpError(400, 'attempt_in_progress', 'This attempt has not been submitted yet.');
+    // If deadline has passed, auto-grade and close it immediately instead of rejecting
+    if (Date.now() > new Date(attempt.deadlineAt).getTime()) {
+      await gradeAndCloseAttempt(db, attemptId, 'auto_submitted');
+      const [reloaded] = await db.select().from(attempts).where(eq(attempts.id, attemptId));
+      if (reloaded) attempt = reloaded;
+    } else {
+      throw new HttpError(400, 'attempt_in_progress', 'This attempt has not been submitted yet.');
+    }
   }
 
   const [test] = await db.select().from(tests).where(eq(tests.id, attempt.testId));
@@ -128,6 +136,13 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
       isCorrect: attemptAnswers.isCorrect,
       marksAwarded: attemptAnswers.marksAwarded,
       timeSpentMs: attemptAnswers.timeSpentMs,
+      visitCount: attemptAnswers.visitCount,
+      solveOrder: attemptAnswers.solveOrder,
+      firstActionTimeMs: attemptAnswers.firstActionTimeMs,
+      firstActionType: attemptAnswers.firstActionType,
+      visitTimesMs: attemptAnswers.visitTimesMs,
+      answerModifications: attemptAnswers.answerModifications,
+      modifiedAfter15s: attemptAnswers.modifiedAfter15s,
     })
     .from(attemptAnswers)
     .where(eq(attemptAnswers.attemptId, attemptId));
@@ -221,6 +236,13 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
       isAttempted,
       marksAwarded,
       timeSpentMs,
+      visitCount: ans?.visitCount ?? 1,
+      solveOrder: ans?.solveOrder ?? null,
+      firstActionTimeMs: ans?.firstActionTimeMs ?? null,
+      firstActionType: ans?.firstActionType ?? null,
+      visitTimesMs: (ans?.visitTimesMs as number[]) ?? [],
+      answerModifications: (ans?.answerModifications as any) ?? null,
+      modifiedAfter15s: Boolean(ans?.modifiedAfter15s),
       isOvertime,
     };
   });
@@ -248,6 +270,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
     rank: Number(rankInfo.rank),
     percentile: Number(rankInfo.percentile),
     totalParticipants: totalParticipantsRow?.count ?? 1,
+    solveOrder: attempt.solveOrder ?? [],
     summary: {
       totalQuestions,
       correctCount,

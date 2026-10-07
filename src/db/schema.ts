@@ -268,9 +268,25 @@ export const attempts = pgTable(
     maxMarks: numeric('max_marks', { precision: 7, scale: 2 }),
     totalTimeS: integer('total_time_s'),
     timeExtensionsCount: integer('time_extensions_count').notNull().default(0),
+    solveOrder: uuid('solve_order').array(),
   },
   (t) => [unique('attempts_unique').on(t.testId, t.studentId, t.attemptNo)],
 );
+
+export type AnswerModificationItem = {
+  from?: { key?: string; value?: number | string } | null;
+  to?: { key?: string; value?: number | string } | null;
+  elapsedMs: number;
+  isAfter15s: boolean;
+  timestamp: string;
+};
+
+export type AnswerModificationMeta = {
+  count: number;
+  modifiedAfter15s: boolean;
+  after15sCount: number;
+  history: AnswerModificationItem[];
+};
 
 export const attemptAnswers = pgTable(
   'attempt_answers',
@@ -285,6 +301,12 @@ export const attemptAnswers = pgTable(
     state: answerState('state').notNull().default('not_seen'),
     timeSpentMs: integer('time_spent_ms').notNull().default(0),
     visitCount: integer('visit_count').notNull().default(0),
+    solveOrder: integer('solve_order'),
+    firstActionTimeMs: integer('first_action_time_ms'),
+    firstActionType: text('first_action_type'),
+    visitTimesMs: jsonb('visit_times_ms').$type<number[]>().notNull().default([]),
+    answerModifications: jsonb('answer_modifications').$type<AnswerModificationMeta | null>(),
+    modifiedAfter15s: boolean('modified_after_15s').notNull().default(false),
     isCorrect: boolean('is_correct'),
     marksAwarded: numeric('marks_awarded', { precision: 5, scale: 2 }),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

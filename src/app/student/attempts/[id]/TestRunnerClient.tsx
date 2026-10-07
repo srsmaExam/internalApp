@@ -29,11 +29,32 @@ export type AnswerState =
   | 'answered_flagged'
   | 'flagged_unanswered';
 
+export type AnswerModificationItem = {
+  from?: { key?: string; value?: number | string } | null;
+  to?: { key?: string; value?: number | string } | null;
+  elapsedMs: number;
+  isAfter15s: boolean;
+  timestamp: string;
+};
+
+export type AnswerModificationMeta = {
+  count: number;
+  modifiedAfter15s: boolean;
+  after15sCount: number;
+  history: AnswerModificationItem[];
+};
+
 export type QuestionRuntimeState = StudentQuestionDto & {
   state: AnswerState;
   response: { key?: string; value?: number | string } | null;
   timeSpentMs: number;
   visitCount: number;
+  solveOrder?: number | null;
+  firstActionTimeMs?: number | null;
+  firstActionType?: 'answered' | 'skipped' | 'flagged' | null;
+  visitTimesMs?: number[];
+  answerModifications?: AnswerModificationMeta | null;
+  modifiedAfter15s?: boolean;
   /**
    * Local-only text for a numerical box mid-typing ("-", "3."), so a partially
    * entered number stays editable without being stored as a response. Never
@@ -167,6 +188,10 @@ export function TestRunnerClient({
   const dirtyRef = useRef(false);
   /** Tracks IDs of questions with unsaved changes for delta syncing. */
   const dirtyQuestionIdsRef = useRef<Set<string>>(new Set());
+  /** Behavioral telemetry tracking refs */
+  const maxSolveOrderRef = useRef<number>(0);
+  const lastAnsweredAtRef = useRef<Record<string, number>>({});
+  const firstVisitStartRef = useRef<Record<string, number>>({});
   /** In-memory Blob URL cache for question/option diagrams to eliminate re-fetching on navigation. */
   const imageBlobCacheRef = useRef<Map<string, string>>(new Map());
   const [, setImageCacheTick] = useState(0);
@@ -243,20 +268,40 @@ export function TestRunnerClient({
 
         const reconciled = serverData.map((q, idx) => {
           const offline = idbSaved?.[q.id];
-          if (offline) {
-            return {
-              ...q,
-              state: offline.state ?? q.state,
-              response: offline.response !== undefined ? offline.response : q.response,
-              timeSpentMs: Math.max(q.timeSpentMs, offline.timeSpentMs ?? 0),
-            };
+          const merged: QuestionRuntimeState = {
+            ...q,
+            state: offline?.state ?? q.state,
+            response: offline?.response !== undefined ? offline.response : q.response,
+            timeSpentMs: Math.max(q.timeSpentMs, offline?.timeSpentMs ?? 0),
+            visitCount: Math.max(q.visitCount ?? 0, offline?.visitCount ?? 0),
+            solveOrder: offline?.solveOrder !== undefined ? offline.solveOrder : q.solveOrder ?? null,
+            firstActionTimeMs: offline?.firstActionTimeMs !== undefined ? offline.firstActionTimeMs : q.firstActionTimeMs ?? null,
+            firstActionType: offline?.firstActionType !== undefined ? offline.firstActionType : q.firstActionType ?? null,
+            visitTimesMs: offline?.visitTimesMs ?? (q.visitTimesMs && q.visitTimesMs.length > 0 ? q.visitTimesMs : []),
+            answerModifications: offline?.answerModifications ?? q.answerModifications ?? null,
+            modifiedAfter15s: offline?.modifiedAfter15s ?? q.modifiedAfter15s ?? false,
+          };
+
+          // Mark first question as seen and initialize its visit if fresh
+          if (idx === 0) {
+            if (merged.state === 'not_seen') {
+              merged.state = 'seen_unanswered';
+            }
+            if (merged.visitCount === 0) {
+              merged.visitCount = 1;
+            }
+            if (!merged.visitTimesMs || merged.visitTimesMs.length === 0) {
+              merged.visitTimesMs = [0];
+            }
           }
-          // Mark first question as seen if it was not_seen
-          if (idx === 0 && q.state === 'not_seen') {
-            return { ...q, state: 'seen_unanswered' as const };
-          }
-          return q;
+          return merged;
         });
+
+        // Initialize telemetry tracking refs
+        maxSolveOrderRef.current = Math.max(0, ...reconciled.map((q) => q.solveOrder ?? 0));
+        if (reconciled[0] && !firstVisitStartRef.current[reconciled[0].id]) {
+          firstVisitStartRef.current[reconciled[0].id] = performance.now();
+        }
 
         // Offline answers may be newer than the server's — push them on the next sync.
         if (idbSaved) {
@@ -359,8 +404,19 @@ export function TestRunnerClient({
     if (delta > 0) {
       setQuestions((prev) => {
         const copy = [...prev];
-        if (copy[idx]) {
-          copy[idx] = { ...copy[idx], timeSpentMs: (copy[idx].timeSpentMs ?? 0) + delta };
+        const q = copy[idx];
+        if (q) {
+          const currentVisits = Array.isArray(q.visitTimesMs) && q.visitTimesMs.length > 0
+            ? [...q.visitTimesMs]
+            : [0];
+          const lastVisitIdx = currentVisits.length - 1;
+          currentVisits[lastVisitIdx] = (currentVisits[lastVisitIdx] || 0) + delta;
+
+          copy[idx] = {
+            ...q,
+            timeSpentMs: (q.timeSpentMs ?? 0) + delta,
+            visitTimesMs: currentVisits,
+          };
         }
         return copy;
       });
@@ -376,6 +432,13 @@ export function TestRunnerClient({
         state: q.state,
         response: q.response,
         timeSpentMs: q.timeSpentMs,
+        visitCount: q.visitCount,
+        solveOrder: q.solveOrder,
+        firstActionTimeMs: q.firstActionTimeMs,
+        firstActionType: q.firstActionType,
+        visitTimesMs: q.visitTimesMs,
+        answerModifications: q.answerModifications,
+        modifiedAfter15s: q.modifiedAfter15s,
       };
     }
     set(idbKey, cacheMap).catch(() => {});
@@ -397,6 +460,12 @@ export function TestRunnerClient({
           state: q.state,
           timeSpentMs: q.timeSpentMs,
           visitCount: q.visitCount,
+          solveOrder: q.solveOrder ?? null,
+          firstActionTimeMs: q.firstActionTimeMs ?? null,
+          firstActionType: q.firstActionType ?? null,
+          visitTimesMs: q.visitTimesMs ?? [],
+          answerModifications: q.answerModifications ?? null,
+          modifiedAfter15s: Boolean(q.modifiedAfter15s),
         })),
       };
     },
@@ -432,7 +501,7 @@ export function TestRunnerClient({
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         if (res.status === 403 && data.error === 'attempt_expired') {
-          router.push(`/student/attempts/${attemptId}/result?tab=report`);
+          router.push(`/student/attempts/${attemptId}/result?tab=solutions`);
           return;
         }
         dirtyRef.current = true;
@@ -595,13 +664,47 @@ export function TestRunnerClient({
 
     setQuestions((prev) => {
       const copy = [...prev];
+      const current = copy[currentIndex];
+      // 6. Time for first action (reading vs decision): record 'skipped' if leaving without answering
+      if (current) {
+        if (current.firstActionTimeMs === null || current.firstActionTimeMs === undefined) {
+          const hasResponse = current.response?.key || current.response?.value !== undefined;
+          if (!hasResponse) {
+            const start = firstVisitStartRef.current[current.id] || activeSinceRef.current;
+            copy[currentIndex] = {
+              ...current,
+              firstActionTimeMs: Math.max(0, Math.round(performance.now() - start)),
+              firstActionType: 'skipped',
+            };
+            dirtyQuestionIdsRef.current.add(current.id);
+            dirtyRef.current = true;
+          }
+        }
+      }
+
       const target = copy[targetIndex];
       if (target) {
-        // visitCount was plumbed through the schema, the DTO, the PATCH handler
-        // and the client payload, and incremented nowhere — it was always 0.
+        const prevCount = target.visitCount ?? 0;
+        const nextCount = prevCount + 1;
+        const currentVisits =
+          Array.isArray(target.visitTimesMs) && target.visitTimesMs.length > 0
+            ? [...target.visitTimesMs]
+            : prevCount > 0
+              ? [target.timeSpentMs ?? 0]
+              : [];
+
+        // 5. Re-visits and Split Time: record time taken per visit
+        const nextVisits = prevCount > 0 ? [...currentVisits, 0] : [0];
+
+        // 6. Record start of visit 1 for target question
+        if (prevCount === 0 && !firstVisitStartRef.current[target.id]) {
+          firstVisitStartRef.current[target.id] = performance.now();
+        }
+
         copy[targetIndex] = {
           ...target,
-          visitCount: (target.visitCount ?? 0) + 1,
+          visitCount: nextCount,
+          visitTimesMs: nextVisits,
           state: target.state === 'not_seen' ? 'seen_unanswered' : target.state,
         };
       }
@@ -610,28 +713,69 @@ export function TestRunnerClient({
 
     setCurrentIndex(targetIndex);
     activeSinceRef.current = performance.now();
-    // Navigation changes only visit/time data; mirrored locally in IndexedDB with zero network cost.
   };
 
   // Action: Select MCQ Option
-  //
-  // FBR-07: this used to write `response` without touching `state`. The
-  // grader keys off `response` alone (isGradeableResponse), so tapping an
-  // option and then jumping straight to another question via the palette
-  // (the fastest way to move on a phone) left the palette cell red
-  // ("Not Answered"), the pre-submit summary counting it as unattempted, and
-  // the grader awarding marksWrong for it — silently costing marks the
-  // student believed were safe. NTA CBT semantics are: selection is the
-  // save. "Save & Next" still exists as a review affordance, but it is no
-  // longer required for a selection to count.
   const handleSelectOption = (key: string) => {
     setQuestions((prev) => {
       const copy = [...prev];
       const q = copy[currentIndex];
       if (q) {
+        // 6. Time for first action (reading vs solving decision time)
+        let firstActionTimeMs = q.firstActionTimeMs;
+        let firstActionType = q.firstActionType;
+        if (firstActionTimeMs === null || firstActionTimeMs === undefined) {
+          const start = firstVisitStartRef.current[q.id] || activeSinceRef.current;
+          firstActionTimeMs = Math.max(0, Math.round(performance.now() - start));
+          firstActionType = 'answered';
+        }
+
+        // 1. Order of solving questions
+        let solveOrder = q.solveOrder;
+        if (solveOrder === null || solveOrder === undefined) {
+          maxSolveOrderRef.current += 1;
+          solveOrder = maxSolveOrderRef.current;
+        }
+
+        // 4. Answer Modifications (>15 seconds check)
+        const prevResp = q.response;
+        let answerModifications = q.answerModifications || {
+          count: 0,
+          modifiedAfter15s: false,
+          after15sCount: 0,
+          history: [],
+        };
+        let modifiedAfter15s = q.modifiedAfter15s || false;
+
+        if (prevResp && prevResp.key && prevResp.key !== key) {
+          const lastAnsTime = lastAnsweredAtRef.current[q.id] || Date.now();
+          const elapsedMs = Math.max(0, Date.now() - lastAnsTime);
+          const isAfter15s = elapsedMs > 15_000;
+          const modItem: AnswerModificationItem = {
+            from: prevResp,
+            to: { key },
+            elapsedMs,
+            isAfter15s,
+            timestamp: new Date().toISOString(),
+          };
+          answerModifications = {
+            count: answerModifications.count + 1,
+            modifiedAfter15s: answerModifications.modifiedAfter15s || isAfter15s,
+            after15sCount: answerModifications.after15sCount + (isAfter15s ? 1 : 0),
+            history: [...answerModifications.history, modItem],
+          };
+          modifiedAfter15s = answerModifications.modifiedAfter15s;
+        }
+        lastAnsweredAtRef.current[q.id] = Date.now();
+
         copy[currentIndex] = {
           ...q,
           response: { key },
+          solveOrder,
+          firstActionTimeMs,
+          firstActionType,
+          answerModifications,
+          modifiedAfter15s,
           state: q.state === 'flagged_unanswered' || q.state === 'answered_flagged' ? 'answered_flagged' : 'answered',
         };
         dirtyQuestionIdsRef.current.add(q.id);
@@ -642,13 +786,7 @@ export function TestRunnerClient({
   };
 
   /**
-   * Accepts only what the grader can actually score: an optional leading minus,
-   * digits, and at most one decimal point.
-   *
-   * The field used to be a bare text input, so `abc` was storable — and it then
-   * disagreed with itself downstream, scoring as unattempted but being
-   * summarised on the scorecard as a wrong answer. Rejecting the keystroke is
-   * clearer than accepting it and explaining later.
+   * Accepts numerical input with validation and records telemetry.
    */
   const handleSetIntegerValue = (val: string) => {
     const trimmed = val.trim();
@@ -658,20 +796,68 @@ export function TestRunnerClient({
       const copy = [...prev];
       const q = copy[currentIndex];
       if (q) {
-        // Keep partial input ("-", "3.") as a string so the box stays editable;
-        // it is stored as null until it parses, so a half-typed number is never
-        // graded as an attempt.
         const num = Number(trimmed);
         const complete = trimmed !== '' && Number.isFinite(num);
-        // FBR-07: mirror handleSelectOption — a value that actually parses is
-        // "answered" the moment it's typed, matching what the grader will
-        // score. A half-typed "-" or "3." goes back to seen_unanswered so it
-        // never shows green before it is a real number.
         const wasFlagged = q.state === 'flagged_unanswered' || q.state === 'answered_flagged';
+
+        let firstActionTimeMs = q.firstActionTimeMs;
+        let firstActionType = q.firstActionType;
+        let solveOrder = q.solveOrder;
+        let answerModifications = q.answerModifications || {
+          count: 0,
+          modifiedAfter15s: false,
+          after15sCount: 0,
+          history: [],
+        };
+        let modifiedAfter15s = q.modifiedAfter15s || false;
+
+        if (complete) {
+          // 6. Time for first action
+          if (firstActionTimeMs === null || firstActionTimeMs === undefined) {
+            const start = firstVisitStartRef.current[q.id] || activeSinceRef.current;
+            firstActionTimeMs = Math.max(0, Math.round(performance.now() - start));
+            firstActionType = 'answered';
+          }
+
+          // 1. Order of solving
+          if (solveOrder === null || solveOrder === undefined) {
+            maxSolveOrderRef.current += 1;
+            solveOrder = maxSolveOrderRef.current;
+          }
+
+          // 4. Answer Modifications (>15s check)
+          const prevResp = q.response;
+          if (prevResp && prevResp.value !== undefined && prevResp.value !== num) {
+            const lastAnsTime = lastAnsweredAtRef.current[q.id] || Date.now();
+            const elapsedMs = Math.max(0, Date.now() - lastAnsTime);
+            const isAfter15s = elapsedMs > 15_000;
+            const modItem: AnswerModificationItem = {
+              from: prevResp,
+              to: { value: num },
+              elapsedMs,
+              isAfter15s,
+              timestamp: new Date().toISOString(),
+            };
+            answerModifications = {
+              count: answerModifications.count + 1,
+              modifiedAfter15s: answerModifications.modifiedAfter15s || isAfter15s,
+              after15sCount: answerModifications.after15sCount + (isAfter15s ? 1 : 0),
+              history: [...answerModifications.history, modItem],
+            };
+            modifiedAfter15s = answerModifications.modifiedAfter15s;
+          }
+          lastAnsweredAtRef.current[q.id] = Date.now();
+        }
+
         copy[currentIndex] = {
           ...q,
           response: complete ? { value: num } : null,
           draftValue: trimmed,
+          solveOrder: complete ? solveOrder : q.solveOrder,
+          firstActionTimeMs,
+          firstActionType,
+          answerModifications,
+          modifiedAfter15s,
           state: complete ? (wasFlagged ? 'answered_flagged' : 'answered') : wasFlagged ? 'flagged_unanswered' : 'seen_unanswered',
         };
         dirtyQuestionIdsRef.current.add(q.id);
@@ -690,8 +876,19 @@ export function TestRunnerClient({
       if (q) {
         const hasResponse = q.response?.key || q.response?.value !== undefined;
         const wasFlagged = q.state === 'flagged_unanswered' || q.state === 'answered_flagged';
+
+        let firstActionTimeMs = q.firstActionTimeMs;
+        let firstActionType = q.firstActionType;
+        if (firstActionTimeMs === null || firstActionTimeMs === undefined) {
+          const start = firstVisitStartRef.current[q.id] || activeSinceRef.current;
+          firstActionTimeMs = Math.max(0, Math.round(performance.now() - start));
+          firstActionType = hasResponse ? 'answered' : 'skipped';
+        }
+
         copy[currentIndex] = {
           ...q,
+          firstActionTimeMs,
+          firstActionType,
           state: hasResponse ? (wasFlagged ? 'answered_flagged' : 'answered') : wasFlagged ? 'flagged_unanswered' : 'seen_unanswered',
         };
         dirtyQuestionIdsRef.current.add(q.id);
@@ -711,8 +908,19 @@ export function TestRunnerClient({
       if (q) {
         const hasResponse = q.response?.key || q.response?.value !== undefined;
         const wasFlagged = q.state === 'flagged_unanswered' || q.state === 'answered_flagged';
+
+        let firstActionTimeMs = q.firstActionTimeMs;
+        let firstActionType = q.firstActionType;
+        if (firstActionTimeMs === null || firstActionTimeMs === undefined) {
+          const start = firstVisitStartRef.current[q.id] || activeSinceRef.current;
+          firstActionTimeMs = Math.max(0, Math.round(performance.now() - start));
+          firstActionType = hasResponse ? 'answered' : 'skipped';
+        }
+
         copy[currentIndex] = {
           ...q,
+          firstActionTimeMs,
+          firstActionType,
           state: hasResponse ? (wasFlagged ? 'answered_flagged' : 'answered') : wasFlagged ? 'flagged_unanswered' : 'seen_unanswered',
         };
         dirtyQuestionIdsRef.current.add(q.id);
@@ -744,8 +952,19 @@ export function TestRunnerClient({
       const q = copy[currentIndex];
       if (q) {
         const hasResponse = q.response?.key || q.response?.value !== undefined;
+
+        let firstActionTimeMs = q.firstActionTimeMs;
+        let firstActionType = q.firstActionType;
+        if (firstActionTimeMs === null || firstActionTimeMs === undefined) {
+          const start = firstVisitStartRef.current[q.id] || activeSinceRef.current;
+          firstActionTimeMs = Math.max(0, Math.round(performance.now() - start));
+          firstActionType = hasResponse ? 'answered' : 'flagged';
+        }
+
         copy[currentIndex] = {
           ...q,
+          firstActionTimeMs,
+          firstActionType,
           state: hasResponse ? 'answered_flagged' : 'flagged_unanswered',
         };
         dirtyQuestionIdsRef.current.add(q.id);
@@ -770,10 +989,44 @@ export function TestRunnerClient({
           q.state === 'answered_flagged' || q.state === 'flagged_unanswered'
             ? 'flagged_unanswered'
             : 'seen_unanswered';
+
+        let answerModifications = q.answerModifications || {
+          count: 0,
+          modifiedAfter15s: false,
+          after15sCount: 0,
+          history: [],
+        };
+        let modifiedAfter15s = q.modifiedAfter15s || false;
+
+        // 4. Record modification when clearing an answer
+        if (q.response !== null && (q.response?.key || q.response?.value !== undefined)) {
+          const lastAnsTime = lastAnsweredAtRef.current[q.id] || Date.now();
+          const elapsedMs = Math.max(0, Date.now() - lastAnsTime);
+          const isAfter15s = elapsedMs > 15_000;
+          const modItem: AnswerModificationItem = {
+            from: q.response,
+            to: null,
+            elapsedMs,
+            isAfter15s,
+            timestamp: new Date().toISOString(),
+          };
+          answerModifications = {
+            count: answerModifications.count + 1,
+            modifiedAfter15s: answerModifications.modifiedAfter15s || isAfter15s,
+            after15sCount: answerModifications.after15sCount + (isAfter15s ? 1 : 0),
+            history: [...answerModifications.history, modItem],
+          };
+          modifiedAfter15s = answerModifications.modifiedAfter15s;
+          lastAnsweredAtRef.current[q.id] = Date.now();
+        }
+
         copy[currentIndex] = {
           ...q,
           response: null,
           draftValue: undefined,
+          solveOrder: null,
+          answerModifications,
+          modifiedAfter15s,
           state: nextState,
         };
         dirtyQuestionIdsRef.current.add(q.id);
@@ -833,10 +1086,10 @@ export function TestRunnerClient({
           throw new Error(data?.message || 'Failed to submit test');
         }
 
-        router.push(`/student/attempts/${attemptId}/result?tab=report`);
+        router.push(`/student/attempts/${attemptId}/result?tab=solutions`);
       } catch (err) {
         if (mode === 'auto') {
-          router.push(`/student/attempts/${attemptId}/result?tab=report`);
+          router.push(`/student/attempts/${attemptId}/result?tab=solutions`);
           return;
         }
         setSubmitError(err instanceof Error ? err.message : 'Failed to submit test');

@@ -1,6 +1,14 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '@/db/client';
-import { attemptAnswers, attempts, questions, testQuestions, tests, type QuestionAnswer } from '@/db/schema';
+import {
+  attemptAnswers,
+  attempts,
+  questions,
+  testQuestions,
+  tests,
+  type AnswerModificationMeta,
+  type QuestionAnswer,
+} from '@/db/schema';
 import { gradeAttempt, isGradeableResponse, type GradingItem } from './grading';
 import { withDbLock } from './db-lock';
 
@@ -149,6 +157,24 @@ export async function gradeAndCloseAttempt(
           .where(and(eq(attemptAnswers.attemptId, attemptId), inArray(attemptAnswers.questionId, qIds)));
       }
 
+      const solveOrderRows = await tx
+        .select({
+          questionId: attemptAnswers.questionId,
+          solveOrder: attemptAnswers.solveOrder,
+        })
+        .from(attemptAnswers)
+        .where(
+          and(
+            eq(attemptAnswers.attemptId, attemptId),
+            sql`${attemptAnswers.solveOrder} IS NOT NULL`,
+          ),
+        );
+
+      const orderedSolveQids = solveOrderRows
+        .filter((r) => r.solveOrder !== null && r.solveOrder !== undefined)
+        .sort((a, b) => (a.solveOrder ?? 0) - (b.solveOrder ?? 0))
+        .map((r) => r.questionId);
+
       await tx
         .update(attempts)
         .set({
@@ -157,6 +183,7 @@ export async function gradeAndCloseAttempt(
           totalMarks: String(gradeResult.totalMarks),
           maxMarks: String(gradeResult.maxMarks),
           totalTimeS,
+          ...(orderedSolveQids.length > 0 ? { solveOrder: orderedSolveQids } : {}),
         })
         .where(eq(attempts.id, attemptId));
     });
@@ -180,6 +207,12 @@ export type AnswerUpdateItem = {
   state?: 'not_seen' | 'seen_unanswered' | 'answered' | 'answered_flagged' | 'flagged_unanswered';
   timeSpentMs?: number;
   visitCount?: number;
+  solveOrder?: number | null;
+  firstActionTimeMs?: number | null;
+  firstActionType?: string | null;
+  visitTimesMs?: number[];
+  answerModifications?: AnswerModificationMeta | null;
+  modifiedAfter15s?: boolean;
 };
 
 function normalizeResponse(resp: AnswerUpdateItem['response']): Record<string, unknown> | null {
@@ -241,6 +274,24 @@ export async function saveAttemptAnswersBatch(
     if (it.visitCount !== undefined) {
       updateFields.visitCount = sql`greatest(${attemptAnswers.visitCount}, ${it.visitCount})`;
     }
+    if (it.solveOrder !== undefined) {
+      updateFields.solveOrder = it.solveOrder;
+    }
+    if (it.firstActionTimeMs !== undefined) {
+      updateFields.firstActionTimeMs = it.firstActionTimeMs;
+    }
+    if (it.firstActionType !== undefined) {
+      updateFields.firstActionType = it.firstActionType;
+    }
+    if (it.visitTimesMs !== undefined) {
+      updateFields.visitTimesMs = it.visitTimesMs;
+    }
+    if (it.answerModifications !== undefined) {
+      updateFields.answerModifications = it.answerModifications;
+    }
+    if (it.modifiedAfter15s !== undefined) {
+      updateFields.modifiedAfter15s = it.modifiedAfter15s;
+    }
 
     await db
       .update(attemptAnswers)
@@ -254,6 +305,12 @@ export async function saveAttemptAnswersBatch(
   const stateItems = items.filter((it) => it.state !== undefined);
   const timeItems = items.filter((it) => it.timeSpentMs !== undefined);
   const visitItems = items.filter((it) => it.visitCount !== undefined);
+  const solveOrderItems = items.filter((it) => it.solveOrder !== undefined);
+  const firstActionTimeItems = items.filter((it) => it.firstActionTimeMs !== undefined);
+  const firstActionTypeItems = items.filter((it) => it.firstActionType !== undefined);
+  const visitTimesItems = items.filter((it) => it.visitTimesMs !== undefined);
+  const answerModItems = items.filter((it) => it.answerModifications !== undefined);
+  const modifiedAfter15sItems = items.filter((it) => it.modifiedAfter15s !== undefined);
 
   const updateFields: Record<string, unknown> = { updatedAt: now };
 
@@ -299,6 +356,86 @@ export async function saveAttemptAnswersBatch(
         sql` `,
       )}
       ELSE ${attemptAnswers.visitCount}
+    END`;
+  }
+
+  if (solveOrderItems.length > 0) {
+    updateFields.solveOrder = sql`CASE ${attemptAnswers.questionId}
+      ${sql.join(
+        solveOrderItems.map((it) =>
+          it.solveOrder === null
+            ? sql`WHEN ${it.questionId} THEN NULL::integer`
+            : sql`WHEN ${it.questionId} THEN ${it.solveOrder}::integer`
+        ),
+        sql` `,
+      )}
+      ELSE ${attemptAnswers.solveOrder}
+    END`;
+  }
+
+  if (firstActionTimeItems.length > 0) {
+    updateFields.firstActionTimeMs = sql`CASE ${attemptAnswers.questionId}
+      ${sql.join(
+        firstActionTimeItems.map((it) =>
+          it.firstActionTimeMs === null
+            ? sql`WHEN ${it.questionId} THEN NULL::integer`
+            : sql`WHEN ${it.questionId} THEN ${it.firstActionTimeMs}::integer`
+        ),
+        sql` `,
+      )}
+      ELSE ${attemptAnswers.firstActionTimeMs}
+    END`;
+  }
+
+  if (firstActionTypeItems.length > 0) {
+    updateFields.firstActionType = sql`CASE ${attemptAnswers.questionId}
+      ${sql.join(
+        firstActionTypeItems.map((it) =>
+          it.firstActionType === null
+            ? sql`WHEN ${it.questionId} THEN NULL::text`
+            : sql`WHEN ${it.questionId} THEN ${it.firstActionType}::text`
+        ),
+        sql` `,
+      )}
+      ELSE ${attemptAnswers.firstActionType}
+    END`;
+  }
+
+  if (visitTimesItems.length > 0) {
+    updateFields.visitTimesMs = sql`CASE ${attemptAnswers.questionId}
+      ${sql.join(
+        visitTimesItems.map((it) => sql`WHEN ${it.questionId} THEN ${JSON.stringify(it.visitTimesMs || [])}::jsonb`),
+        sql` `,
+      )}
+      ELSE ${attemptAnswers.visitTimesMs}
+    END`;
+  }
+
+  if (answerModItems.length > 0) {
+    updateFields.answerModifications = sql`CASE ${attemptAnswers.questionId}
+      ${sql.join(
+        answerModItems.map((it) =>
+          it.answerModifications === null
+            ? sql`WHEN ${it.questionId} THEN NULL::jsonb`
+            : sql`WHEN ${it.questionId} THEN ${JSON.stringify(it.answerModifications)}::jsonb`
+        ),
+        sql` `,
+      )}
+      ELSE ${attemptAnswers.answerModifications}
+    END`;
+  }
+
+  if (modifiedAfter15sItems.length > 0) {
+    updateFields.modifiedAfter15s = sql`CASE ${attemptAnswers.questionId}
+      ${sql.join(
+        modifiedAfter15sItems.map((it) =>
+          it.modifiedAfter15s
+            ? sql`WHEN ${it.questionId} THEN TRUE`
+            : sql`WHEN ${it.questionId} THEN FALSE`
+        ),
+        sql` `,
+      )}
+      ELSE ${attemptAnswers.modifiedAfter15s}
     END`;
   }
 
