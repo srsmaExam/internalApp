@@ -76,17 +76,24 @@ async function getActiveDatabaseUrl(): Promise<string | null> {
 async function initialise(): Promise<{ client: ClientQueryable; db: Db }> {
   const activeUrl = await getActiveDatabaseUrl();
   if (activeUrl) {
+    const isCloudflare = Boolean(
+      typeof (globalThis as any).WebSocketPair !== 'undefined' ||
+      process.env.CF_PAGES === '1' ||
+      process.env.CLOUDFLARE === '1'
+    );
     const isLocalhost = activeUrl.includes('localhost') || activeUrl.includes('127.0.0.1');
 
-    // Strip sslmode query parameter to prevent pg-connection-string from overriding
-    // our explicit ssl config with an empty object {} that forces strict CA checking and
-    // triggers SELF_SIGNED_CERT_IN_CHAIN on cloud providers like Supabase.
-    const sanitizedUrl = activeUrl.replace(/([?&])sslmode=[^&]+(&|$)/, (m, p1, p2) => (p1 === '?' && p2 ? '?' : ''));
+    // If sslmode=require is used, enable uselibpqcompat=true so that pg-connection-string
+    // honors our explicit ssl: { rejectUnauthorized: false } without throwing SELF_SIGNED_CERT_IN_CHAIN.
+    let sanitizedUrl = activeUrl;
+    if (sanitizedUrl.includes('sslmode=require') && !sanitizedUrl.includes('uselibpqcompat=true')) {
+      sanitizedUrl += (sanitizedUrl.includes('?') ? '&' : '?') + 'uselibpqcompat=true';
+    }
 
     const sslOption =
       process.env.DATABASE_SSL === 'false'
         ? false
-        : !isLocalhost || process.env.NODE_ENV === 'production'
+        : !isLocalhost || process.env.NODE_ENV === 'production' || isCloudflare
           ? { rejectUnauthorized: false }
           : undefined;
 
@@ -95,8 +102,8 @@ async function initialise(): Promise<{ client: ClientQueryable; db: Db }> {
       new Pool({
         connectionString: sanitizedUrl,
         ssl: sslOption,
-        max: Number(process.env.DATABASE_POOL_MAX ?? 5),
-        idleTimeoutMillis: 15_000,
+        max: isCloudflare ? 1 : Number(process.env.DATABASE_POOL_MAX ?? 5),
+        idleTimeoutMillis: isCloudflare ? 1_000 : 15_000,
         connectionTimeoutMillis: 10_000,
       });
 
@@ -105,25 +112,33 @@ async function initialise(): Promise<{ client: ClientQueryable; db: Db }> {
       // get quietly severed when isolates sleep. Logging without crashing ensures the pool
       // reconnects on the next query.
       console.warn('[db pool warning]', err.message);
+      if (isCloudflare) {
+        globalForDb.__vtpPgPool = undefined;
+        globalForDb.__vtpDb = undefined;
+      }
     });
 
     globalForDb.__vtpPgPool = pool;
 
-    // Skip runtime migrations during serverless cold starts in production unless explicitly enabled
-    if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'true') {
-      if (process.env.SKIP_RUNTIME_MIGRATIONS !== 'true') await runMigrations(pool);
+    // Never run runtime migrations on serverless / Cloudflare (migrations are pre-applied via CLI)
+    const isServerless = Boolean(
+      process.env.VERCEL === '1' ||
+      process.env.CF_PAGES === '1' ||
+      process.env.CLOUDFLARE === '1' ||
+      process.env.NODE_ENV === 'production' ||
+      process.env.SKIP_RUNTIME_MIGRATIONS === 'true' ||
+      isCloudflare
+    );
+
+    if (!isServerless && process.env.RUN_MIGRATIONS === 'true') {
+      await runMigrations(pool);
     }
     const db = drizzleNodePg(pool, { schema }) as Db;
     db.$client = pool;
 
     // In non-serverless long-running production, initialize sweep interval
-    const isServerless = Boolean(
-      process.env.VERCEL === '1' ||
-      process.env.CF_PAGES === '1' ||
-      process.env.CLOUDFLARE === '1' ||
-      process.env.DISABLE_SWEEP_TIMER === 'true'
-    );
-    if (!isServerless) {
+    const shouldDisableSweep = isServerless || process.env.DISABLE_SWEEP_TIMER === 'true';
+    if (!shouldDisableSweep) {
       await sweepExpiredAttempts(db).catch((err) => console.error('[sweep] initial run failed', err));
 
       const SWEEP_INTERVAL_MS = 60_000;

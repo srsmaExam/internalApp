@@ -14,7 +14,9 @@
     "enabled": true
   },
   "vars": {
-    "DATABASE_URL": "postgresql://postgres.eplbgsildlzuusqjgfyi:SRSMA%40108%21%21@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require",
+    "NODE_ENV": "production",
+    "SKIP_RUNTIME_MIGRATIONS": "true",
+    "DATABASE_URL": "postgresql://postgres.eplbgsildlzuusqjgfyi:SRSMA%40108%21%21@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?uselibpqcompat=true&sslmode=require&pgbouncer=true",
     "SESSION_SECRET": "kO87M9iPWSqCTtHasbSjHQ1Sfbru4TFFbw35n4tKxQA",
     "COOKIE_SECURE": "true",
     "CRON_SECRET": "cee0fa379c396c15290ea1a528c9cc92",
