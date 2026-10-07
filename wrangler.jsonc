@@ -1,31 +1,38 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "srsma-test-prep",
-  "main": ".open-next/worker.js",
-  "compatibility_date": "2025-01-01",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
-  "observability": {
-    "enabled": true
-  },
-  "vars": {
-    "NODE_ENV": "production",
-    "SKIP_RUNTIME_MIGRATIONS": "true",
-    "DATABASE_URL": "postgresql://postgres.eplbgsildlzuusqjgfyi:SRSMA%40108%21%21@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?uselibpqcompat=true&sslmode=require",
-    "SESSION_SECRET": "kO87M9iPWSqCTtHasbSjHQ1Sfbru4TFFbw35n4tKxQA",
-    "COOKIE_SECURE": "true",
-    "CRON_SECRET": "cee0fa379c396c15290ea1a528c9cc92",
-    "DISABLE_SWEEP_TIMER": "true",
-    "NEXT_PUBLIC_GA_MEASUREMENT_ID": "G-D36DLF1HJX",
-    "WHATSAPP_PHONE_NUMBER_ID": "1362659850263393",
-    "WHATSAPP_ACCESS_TOKEN": "EAA4E85Lqq2IBSsg35w8sUma8d7NRpjQv5LIIDYEnMq4VCSjzQZAK0lBSs6NIh5ZA1i6q9IofOP3VZANVHW65Kja89aPZALuF9h224srw9NFYt6e6c60HYqplgOmBVkFcG6qQdBqkRlKRBbK3PZCwpK3DqD3HNS00lt3uJByuecykbtWUMMZBnmdiawkSaI3gZDZD",
-    "WHATSAPP_TEMPLATE_NAME": "otp",
-    "WHATSAPP_TEMPLATE_LANGUAGE": "en",
-    "ENABLE_DEV_OTP_MOCK": "false"
-  }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "srsma-test-prep",
+	"main": ".open-next/worker.js",
+	"compatibility_date": "2025-01-01",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"vars": {
+		"NODE_ENV": "production",
+		"SKIP_RUNTIME_MIGRATIONS": "true",
+		"DATABASE_URL": "postgresql://postgres.eplbgsildlzuusqjgfyi:SRSMA%40108%21%21@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?uselibpqcompat=true&sslmode=require",
+		"SESSION_SECRET": "kO87M9iPWSqCTtHasbSjHQ1Sfbru4TFFbw35n4tKxQA",
+		"COOKIE_SECURE": "true",
+		"CRON_SECRET": "cee0fa379c396c15290ea1a528c9cc92",
+		"DISABLE_SWEEP_TIMER": "true",
+		"NEXT_PUBLIC_GA_MEASUREMENT_ID": "G-D36DLF1HJX",
+		"WHATSAPP_PHONE_NUMBER_ID": "1362659850263393",
+		"WHATSAPP_ACCESS_TOKEN": "EAA4E85Lqq2IBSsg35w8sUma8d7NRpjQv5LIIDYEnMq4VCSjzQZAK0lBSs6NIh5ZA1i6q9IofOP3VZANVHW65Kja89aPZALuF9h224srw9NFYt6e6c60HYqplgOmBVkFcG6qQdBqkRlKRBbK3PZCwpK3DqD3HNS00lt3uJByuecykbtWUMMZBnmdiawkSaI3gZDZD",
+		"WHATSAPP_TEMPLATE_NAME": "otp",
+		"WHATSAPP_TEMPLATE_LANGUAGE": "en",
+		"ENABLE_DEV_OTP_MOCK": "false"
+	},
+	"hyperdrive": [
+		{
+			"binding": "HYPERDRIVE",
+			"id": "e476484896924fe4b38924c3a654b0a8",
+			"localConnectionString": "postgresql://postgres.eplbgsildlzuusqjgfyi:SRSMA%40108%21%21@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require"
+		}
+	]
 }

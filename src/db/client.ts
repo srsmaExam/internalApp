@@ -39,12 +39,7 @@ export function isExternalDb(): boolean {
  * falling back to process.env.DATABASE_URL.
  */
 async function getActiveDatabaseUrl(): Promise<string | null> {
-  // 1. Direct process.env check (populated by Node, .env, or Cloudflare vars)
-  if (process.env.DATABASE_URL && process.env.DATABASE_URL.trim().length > 0) {
-    return process.env.DATABASE_URL.trim();
-  }
-
-  // 2. Cloudflare Worker request context (Bindings & Environment Variables)
+  // 1. Cloudflare Worker request context (Bindings & Hyperdrive accelerator)
   try {
     const { getCloudflareContext } = await import('@opennextjs/cloudflare');
     let cfContext: any;
@@ -56,13 +51,21 @@ async function getActiveDatabaseUrl(): Promise<string | null> {
     const cfEnv = cfContext?.env as Record<string, any> | undefined;
     const hyperdrive = cfEnv?.HYPERDRIVE as { connectionString?: string } | undefined;
     const databaseBinding = cfEnv?.DATABASE as { connectionString?: string } | undefined;
-    if (hyperdrive?.connectionString) return hyperdrive.connectionString;
+    if (hyperdrive?.connectionString) {
+      console.log('[db] using Cloudflare Hyperdrive accelerated connection');
+      return hyperdrive.connectionString;
+    }
     if (databaseBinding?.connectionString) return databaseBinding.connectionString;
     if (typeof cfEnv?.DATABASE_URL === 'string' && cfEnv.DATABASE_URL.trim().length > 0) {
       return cfEnv.DATABASE_URL.trim();
     }
   } catch {
     // Outside of Cloudflare request context
+  }
+
+  // 2. Direct process.env check (populated by Node, .env, or Cloudflare vars fallback)
+  if (process.env.DATABASE_URL && process.env.DATABASE_URL.trim().length > 0) {
+    return process.env.DATABASE_URL.trim();
   }
 
   return null;
@@ -90,9 +93,10 @@ async function initialise(): Promise<{ client: ClientQueryable; db: Db }> {
       sanitizedUrl += (sanitizedUrl.includes('?') ? '&' : '?') + 'uselibpqcompat=true';
     }
 
+    const isHyperdrive = activeUrl.includes('hyperdrive') || (isLocalhost && isCloudflare);
     const sslOption =
-      process.env.DATABASE_SSL === 'false'
-        ? false
+      isHyperdrive || process.env.DATABASE_SSL === 'false'
+        ? undefined
         : !isLocalhost || process.env.NODE_ENV === 'production' || isCloudflare
           ? { rejectUnauthorized: false }
           : undefined;
