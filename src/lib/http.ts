@@ -28,16 +28,35 @@ export type ApiHandler<Ctx> = (req: Request, ctx: Ctx) => Promise<Response> | Re
 export function withApi<Ctx>(handler: ApiHandler<Ctx>): ApiHandler<Ctx> {
   return async (req, ctx) => {
     try {
-      return await handler(req, ctx);
+      const res = await handler(req, ctx);
+      if (res instanceof NextResponse && !res.headers.has('Cache-Control')) {
+        res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+      }
+      return res;
     } catch (err) {
       if (err instanceof HttpError) {
         return NextResponse.json(
           { error: err.code, message: err.message, ...(err.extra ?? {}) },
-          { status: err.status },
+          {
+            status: err.status,
+            headers: {
+              'Cache-Control': 'no-store, no-cache, must-revalidate',
+              Pragma: 'no-cache',
+            },
+          },
         );
       }
       if (err instanceof ZodError) {
-        return NextResponse.json({ error: 'validation_failed', issues: formatZodIssues(err) }, { status: 422 });
+        return NextResponse.json(
+          { error: 'validation_failed', issues: formatZodIssues(err) },
+          {
+            status: 422,
+            headers: {
+              'Cache-Control': 'no-store, no-cache, must-revalidate',
+              Pragma: 'no-cache',
+            },
+          },
+        );
       }
       console.error('[api] unhandled error', err);
       return NextResponse.json(
@@ -47,7 +66,13 @@ export function withApi<Ctx>(handler: ApiHandler<Ctx>): ApiHandler<Ctx> {
           cause: (err as any)?.cause ? String((err as any).cause) : undefined,
           stack: err instanceof Error ? err.stack : undefined,
         },
-        { status: 500 },
+        {
+          status: 500,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+            Pragma: 'no-cache',
+          },
+        },
       );
     }
   };
@@ -66,8 +91,13 @@ export function formatZodIssues(err: ZodError): ValidationIssue[] {
   }));
 }
 
-export function json(data: unknown, status = 200): NextResponse {
-  return NextResponse.json(data, { status });
+export function json(data: unknown, status = 200, init?: ResponseInit): NextResponse {
+  const headers = new Headers(init?.headers);
+  if (!headers.has('Cache-Control')) {
+    headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    headers.set('Pragma', 'no-cache');
+  }
+  return NextResponse.json(data, { ...init, status, headers });
 }
 
 /**

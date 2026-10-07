@@ -56,7 +56,7 @@ export async function StudentTestRunnerView({ attemptId }: { attemptId: string }
   }
 
   if (attempt.status !== 'in_progress') {
-    redirect(`/student/attempts/${attemptId}/result?tab=report`);
+    redirect(`/student/attempts/${attemptId}/result?tab=solutions`);
   }
 
   // Pre-load questions so the client needn't fetch them on mount. On failure the

@@ -395,12 +395,18 @@ export function ResultReviewClient({
     let isCancelled = false;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let retryCount = 0;
-    const maxRetries = 4;
+    const maxRetries = 6;
 
     async function loadResult() {
       try {
         setLoading(true);
-        const res = await fetch(`/api/attempts/${attemptId}/result`);
+        const res = await fetch(`/api/attempts/${attemptId}/result?_t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+            Pragma: 'no-cache',
+          },
+        });
         const json = await res.json();
 
         if (isCancelled) return;
@@ -419,7 +425,7 @@ export function ResultReviewClient({
             setIsFinalizing(true);
             retryTimer = setTimeout(() => {
               if (!isCancelled) void loadResult();
-            }, 1000 * retryCount);
+            }, 1200);
             return;
           }
 
@@ -506,29 +512,45 @@ export function ResultReviewClient({
         <Alert tone={isInProgress ? 'amber' : 'red'} title={isInProgress ? 'Exam In Progress' : 'Could not load results'}>
           <p>{isInProgress ? 'This exam attempt has not been submitted yet.' : (error ?? 'Result not found')}</p>
         </Alert>
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
           {isInProgress ? (
-            <Link
-              href={`/student/attempts/${attemptId}`}
-              className={buttonClass('primary', 'md', 'bg-brand-600 hover:bg-brand-700 text-white font-bold')}
-            >
-              Resume Exam
-            </Link>
+            <>
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={() => {
+                  setError(null);
+                  setLoading(true);
+                  window.location.reload();
+                }}
+                className="w-full sm:w-auto font-bold"
+              >
+                Check Results Again
+              </Button>
+              <Link
+                href={`/student/attempts/${attemptId}`}
+                className={buttonClass('secondary', 'md', 'w-full sm:w-auto font-bold')}
+              >
+                Resume Exam
+              </Link>
+            </>
           ) : (
             <Button
               type="button"
               variant="primary"
-              size="sm"
+              size="md"
               onClick={() => {
                 setError(null);
                 setLoading(true);
                 window.location.reload();
               }}
+              className="w-full sm:w-auto font-bold"
             >
               Retry Loading Results
             </Button>
           )}
-          <Link href={userRole === 'teacher' ? '/teacher/tests' : '/student'} className={buttonClass('secondary', 'md')}>
+          <Link href={userRole === 'teacher' ? '/teacher/tests' : '/student'} className={buttonClass('secondary', 'md', 'w-full sm:w-auto')}>
             Return to Dashboard
           </Link>
         </div>
