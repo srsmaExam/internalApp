@@ -10,23 +10,6 @@ export async function StudentTestInstructionView({ testId }: { testId: string })
   const session = await requireStudent();
   const db = await getDb();
 
-  // Check if report has been unlocked by this student
-  let isReportUnlocked = false;
-  try {
-    const [profile] = await db
-      .select({
-        whatsappConsent: profiles.whatsappConsent,
-        city: profiles.city,
-      })
-      .from(profiles)
-      .where(eq(profiles.id, session.userId));
-
-    isReportUnlocked = Boolean(
-      session.role === 'teacher' || (profile && profile.whatsappConsent && profile.city),
-    );
-  } catch {
-    isReportUnlocked = false;
-  }
 
   const [test] = await db
     .select({
@@ -98,15 +81,10 @@ export async function StudentTestInstructionView({ testId }: { testId: string })
     .from(attempts)
     .where(and(eq(attempts.testId, testId), eq(attempts.studentId, session.userId)));
 
-  const displayTitle =
-    !isReportUnlocked && test.title.toLowerCase().includes('set a')
-      ? 'Board Readiness Challenge'
-      : test.title;
-
   return (
     <StudentChrome session={session}>
       <TestInstructionClient
-        test={{ ...test, title: displayTitle }}
+        test={test}
         markingRules={[...ruleMap.values()]}
         subjectCounts={subjectCounts}
         attemptsUsed={attemptsUsed}

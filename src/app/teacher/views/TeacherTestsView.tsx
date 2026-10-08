@@ -39,7 +39,7 @@ export async function TeacherTestsView() {
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">Tests</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Create, configure, schedule, and publish Board Readiness Challenge tests for students.
+            Create, configure, schedule, and publish JEE Online tests for students.
           </p>
         </div>
         <Link href="/teacher/tests/new" className={buttonClass('primary', 'md')}>
@@ -51,7 +51,7 @@ export async function TeacherTestsView() {
       {allTests.length === 0 ? (
         <EmptyState
           title="No tests created yet"
-          hint="Create your first Board Readiness Challenge test and pick verified questions from the question bank."
+          hint="Create your first JEE Online Test and pick verified questions from the question bank."
           action={
             <Link href="/teacher/tests/new" className={buttonClass('primary', 'md')}>
               <Plus className="mr-1.5 size-4" />

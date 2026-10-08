@@ -3,7 +3,7 @@
  */
 export const BRAND = {
   orgName: 'Shri Ram Smart Minds Academy',
-  productName: 'Board Readiness Challenge',
+  productName: 'JEE Online Test',
   shortName: 'SRSMA',
 
   primary: '#1E3A8A',

@@ -1688,7 +1688,7 @@ export function TestBuilderClient({
               <div className="flex flex-wrap gap-1.5 pt-1">
                 <Button variant="secondary" size="sm" onClick={() => applyPreset('jee')}>
                   <Sparkles className="mr-1 size-3 text-amber-500" />
-                  Board Readiness Challenge (+4 / -1 / 0 · Num: +4 / 0 / 0)
+                  JEE Online Test (+4 / -1 / 0 · Num: +4 / 0 / 0)
                 </Button>
                 <Button variant="secondary" size="sm" onClick={() => applyPreset('neet')}>
                   NEET (+4 / -1 / 0)

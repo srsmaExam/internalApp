@@ -254,7 +254,7 @@ describe('SRSMA Diagnostic Evaluator', () => {
     expect(q5Flag?.issueObserved).toContain('Unattempted');
 
     // Plain text report generation
-    expect(result.plainTextReport).toContain('PAGE 1: BOARD READINESS CHALLENGE REPORT');
+    expect(result.plainTextReport).toContain('PAGE 1: JEE ONLINE TEST REPORT');
     expect(result.plainTextReport).toContain('PAGE 2: YOUR STRENGTHS');
     expect(result.plainTextReport).toContain('PAGE 3: WHERE SHOULD YOU IMPROVE?');
     expect(result.plainTextReport).toContain('PAGE 4: RECOMMENDATIONS');

@@ -82,7 +82,7 @@ describe('StudentDashboardView - Pre-Unlock vs Unlocked Diagnostic Tests', () =>
     await db.insert(schema.tests).values([
       {
         id: 'aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-        title: 'Board Readiness Challenge Set A',
+        title: 'JEE Online Test Set A',
         description: 'A Diagnostic Test for Class 10 Students.',
         durationS: 1200,
         audience: 'public',
@@ -91,7 +91,7 @@ describe('StudentDashboardView - Pre-Unlock vs Unlocked Diagnostic Tests', () =>
       },
       {
         id: 'bbbbbbb2-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-        title: 'Board Readiness Challenge Set B',
+        title: 'JEE Online Test Set B',
         description: 'A Diagnostic Test for Class 10 Students.',
         durationS: 1200,
         audience: 'public',
@@ -105,51 +105,26 @@ describe('StudentDashboardView - Pre-Unlock vs Unlocked Diagnostic Tests', () =>
     await pg.close();
   });
 
-  it('before unlock: displays only Set A renamed to "Board Readiness Challenge" and hides the diagnostic callout', async () => {
+  it('displays all published tests with their actual database titles', async () => {
     const { StudentDashboardView } = await import('./StudentDashboardView');
     const jsx = await StudentDashboardView();
 
     // Render JSX tree to HTML string to assert rendering
     const html = renderToStaticMarkup(jsx!);
 
-    // Header count must indicate 1 total
-    expect(html).toContain('1 total');
+    // Header count must indicate 2 total
+    expect(html).toContain('2 total');
 
-    // Only 1 test shown with title "Board Readiness Challenge", without "Set A" or "Set B"
-    expect(html).toContain('Board Readiness Challenge');
-    expect(html).not.toContain('Board Readiness Challenge Set A');
-    expect(html).not.toContain('Board Readiness Challenge Set B');
+    // Both tests shown with their actual titles
+    expect(html).toContain('JEE Online Test Set A');
+    expect(html).toContain('JEE Online Test Set B');
 
-    // The callout mentioning "Below are 2 diagnostic tests" must NOT be rendered
-    expect(html).not.toContain('Below are 2 diagnostic tests');
+    // Welcome banner indicates JEE Online Test Preparation
+    expect(html).toContain('JEE Online Test Preparation');
 
     // Without any completed tests, button must say "View Sample Report"
     expect(html).toContain('View Sample Report');
     expect(html).not.toContain('View My Report');
-  });
-
-  it('after unlock: displays both tests with original titles and displays the diagnostic callout', async () => {
-    // Unlock student report
-    const { eq } = await import('drizzle-orm');
-    await db
-      .update(schema.profiles)
-      .set({ whatsappConsent: true, city: 'Hyderabad' })
-      .where(eq(schema.profiles.id, student1Id));
-
-    const { StudentDashboardView } = await import('./StudentDashboardView');
-    const jsx = await StudentDashboardView();
-
-    const html = renderToStaticMarkup(jsx!);
-
-    // Header count must indicate 2 total
-    expect(html).toContain('2 total');
-
-    // Both tests must now appear with their original database titles
-    expect(html).toContain('Board Readiness Challenge Set A');
-    expect(html).toContain('Board Readiness Challenge Set B');
-
-    // The callout mentioning "Below are 2 diagnostic tests" MUST be rendered
-    expect(html).toContain('Below are 2 diagnostic tests');
   });
 
   it('after completing a test: button displays "View My Report"', async () => {

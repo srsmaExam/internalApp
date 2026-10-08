@@ -434,10 +434,10 @@ export function StudentAnalyticsClient({
       <div className="mx-auto max-w-2xl space-y-6">
         <div>
           <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-            BOARD READINESS CHALLENGE REPORT
+            JEE ONLINE TEST REPORT
           </h1>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            Personalized diagnostic evaluation, cognitive skills profile, and actionable Class X Board recommendations.
+            Personalized diagnostic evaluation, cognitive skills profile, and actionable Class X recommendations.
           </p>
         </div>
 
@@ -446,7 +446,7 @@ export function StudentAnalyticsClient({
           hint={
             isTeacherView
               ? "This student has not completed or submitted any tests yet."
-              : "Take and submit your first Board Readiness Challenge test to unlock your personalized 3-page diagnostic report with Board Readiness Index (BRI), cognitive skills breakdown, and priority gaps."
+              : "Take and submit your first JEE Online Test to unlock your personalized 3-page diagnostic report with Board Readiness Index (BRI), cognitive skills breakdown, and priority gaps."
           }
           action={
             <div className="flex flex-wrap items-center justify-center gap-3">
@@ -477,8 +477,8 @@ export function StudentAnalyticsClient({
               </p>
               <p className="text-amber-800 dark:text-amber-300/80 text-[11px]">
                 {data.totalAttempts === 0
-                  ? 'You have not written the test yet. Below is a sample 5-page Board Readiness Challenge Report demonstrating the personalized evaluation.'
-                  : 'Viewing the 5-page Board Readiness Challenge Report with sample Class X student attempt responses.'}
+                  ? 'You have not written the test yet. Below is a sample 5-page JEE Online Test Report demonstrating the personalized evaluation.'
+                  : 'Viewing the 5-page JEE Online Test Report with sample Class X student attempt responses.'}
               </p>
             </div>
           </div>

@@ -10,23 +10,6 @@ export async function StudentTestRunnerView({ attemptId }: { attemptId: string }
   const session = await requireStudent();
   const db = await getDb();
 
-  // Check if report has been unlocked by this student
-  let isReportUnlocked = false;
-  try {
-    const [profile] = await db
-      .select({
-        whatsappConsent: profiles.whatsappConsent,
-        city: profiles.city,
-      })
-      .from(profiles)
-      .where(eq(profiles.id, session.userId));
-
-    isReportUnlocked = Boolean(
-      session.role === 'teacher' || (profile && profile.whatsappConsent && profile.city),
-    );
-  } catch {
-    isReportUnlocked = false;
-  }
 
   const [attempt] = await db
     .select({
@@ -68,15 +51,10 @@ export async function StudentTestRunnerView({ attemptId }: { attemptId: string }
     initialQuestions = undefined;
   }
 
-  const displayTitle =
-    !isReportUnlocked && attempt.testTitle.toLowerCase().includes('set a')
-      ? 'Board Readiness Challenge'
-      : attempt.testTitle;
-
   return (
     <TestRunnerClient
       attemptId={attempt.id}
-      testTitle={displayTitle}
+      testTitle={attempt.testTitle}
       deadlineAt={attempt.deadlineAt.toISOString()}
       studentName={session.fullName}
       serverTime={new Date().toISOString()}

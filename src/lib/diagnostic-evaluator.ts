@@ -1,6 +1,6 @@
 /**
  * SRSMA Diagnostic Evaluation Engine
- * Class X Board Readiness Challenge Evaluator
+ * Class X JEE Online Test Evaluator
  *
  * Dynamically computes evaluation metrics, breakdowns, skills, structural patterns,
  * strengths, priority gaps, topics to revisit, and analytical narratives strictly from
@@ -2346,10 +2346,10 @@ function generateReportPlainTextFormat(data: {
 
   // PAGE 1
   lines.push('================================================================================');
-  lines.push('PAGE 1: BOARD READINESS CHALLENGE REPORT');
+  lines.push('PAGE 1: JEE ONLINE TEST REPORT');
   lines.push('================================================================================');
   lines.push('');
-  lines.push('BOARD READINESS CHALLENGE REPORT');
+  lines.push('JEE ONLINE TEST REPORT');
   lines.push('');
   lines.push("For Parents: This report is best used as a starting point for understanding your child's current preparation and identifying where focused support can make the greatest difference.");
   lines.push('');

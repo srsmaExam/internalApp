@@ -1089,8 +1089,8 @@ export function BoardReadinessReport({
 
     const message =
       action === 'whatsapp_contact_us'
-        ? `Hi, I just completed the Board Readiness Challenge at Shri Ram Smart Minds Academy. Based on my diagnostic report, I would like to speak with an academic counsellor about the Class 10 Board Mastery Course. Please share details.`
-        : `Hi, I just completed the Board Readiness Challenge at Shri Ram Smart Minds Academy. Based on my diagnostic report, I would like to enroll in the Class 10 Board Mastery Course. Please share the next steps and batch details.`;
+        ? `Hi, I just completed the JEE Online Test at Shri Ram Smart Minds Academy. Based on my diagnostic report, I would like to speak with an academic counsellor about the Class 10 Board Mastery Course. Please share details.`
+        : `Hi, I just completed the JEE Online Test at Shri Ram Smart Minds Academy. Based on my diagnostic report, I would like to enroll in the Class 10 Board Mastery Course. Please share the next steps and batch details.`;
     const url = `https://wa.me/918463911854?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
@@ -1275,7 +1275,7 @@ export function BoardReadinessReport({
                 )}
               </div>
               <h1 className="text-sm sm:text-base font-black tracking-tight text-slate-900 dark:text-white mt-0.5 truncate">
-                BOARD READINESS CHALLENGE REPORT
+                JEE ONLINE TEST REPORT
               </h1>
             </div>
           </div>
@@ -1379,7 +1379,7 @@ export function BoardReadinessReport({
       </div>
 
       {/* =========================================================================
-          PAGE 1: BOARD READINESS CHALLENGE REPORT
+          PAGE 1: JEE ONLINE TEST REPORT
           ========================================================================= */}
       <section
         id="report-page-1"
@@ -1417,7 +1417,7 @@ export function BoardReadinessReport({
           </div>
 
           <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-2.5 break-words">
-            PAGE 1: BOARD READINESS CHALLENGE REPORT
+            PAGE 1: JEE ONLINE TEST REPORT
           </h2>
 
           <div className="mt-3.5 w-full rounded-xl border border-blue-200/90 bg-gradient-to-r from-blue-50/80 to-indigo-50/50 p-3.5 sm:p-4 text-sm dark:border-blue-900/60 dark:bg-gradient-to-r dark:from-blue-950/40 dark:to-indigo-950/20 flex items-start gap-2.5 shadow-2xs">
@@ -2407,7 +2407,7 @@ export function BoardReadinessReport({
                 ✓
               </span>
               <div>
-                Official Diagnostic Dossier for <strong className="text-slate-800 dark:text-slate-200">{report.studentName}</strong> • {studentDetails?.isFormFilled ? `${studentDetails.classLevel ? `Class ${studentDetails.classLevel}` : 'Class X'} ${studentDetails.board || 'CBSE'}` : 'Class X Board Readiness Challenge'}
+                Official Diagnostic Dossier for <strong className="text-slate-800 dark:text-slate-200">{report.studentName}</strong> • {studentDetails?.isFormFilled ? `${studentDetails.classLevel ? `Class ${studentDetails.classLevel}` : 'Class X'} ${studentDetails.board || 'CBSE'}` : 'Class X JEE Online Test'}
               </div>
             </div>
             <div className="text-center sm:text-right font-semibold text-slate-600 dark:text-slate-400">
@@ -3112,7 +3112,7 @@ export function BoardReadinessReport({
               ✓
             </span>
             <div>
-              Personalized Growth Blueprint for <strong className="text-slate-800 dark:text-slate-200">{report.studentName}</strong> • {studentDetails?.isFormFilled ? `${studentDetails.classLevel ? `Class ${studentDetails.classLevel}` : 'Class X'} ${studentDetails.board || 'CBSE'}` : 'Class X Board Readiness Challenge'}
+              Personalized Growth Blueprint for <strong className="text-slate-800 dark:text-slate-200">{report.studentName}</strong> • {studentDetails?.isFormFilled ? `${studentDetails.classLevel ? `Class ${studentDetails.classLevel}` : 'Class X'} ${studentDetails.board || 'CBSE'}` : 'Class X JEE Online Test'}
             </div>
           </div>
           <div className="text-center sm:text-right font-semibold text-slate-600 dark:text-slate-400">
@@ -3574,7 +3574,7 @@ export function BoardReadinessReport({
               ✓
             </span>
             <div>
-              Academic Mentorship Pathway for <strong className="text-slate-800 dark:text-slate-200">{report.studentName}</strong> • {studentDetails?.isFormFilled ? `${studentDetails.classLevel ? `Class ${studentDetails.classLevel}` : 'Class X'} ${studentDetails.board || 'CBSE'}` : 'Class X Board Readiness Challenge'}
+              Academic Mentorship Pathway for <strong className="text-slate-800 dark:text-slate-200">{report.studentName}</strong> • {studentDetails?.isFormFilled ? `${studentDetails.classLevel ? `Class ${studentDetails.classLevel}` : 'Class X'} ${studentDetails.board || 'CBSE'}` : 'Class X JEE Online Test'}
             </div>
           </div>
           <div className="text-center sm:text-right font-semibold text-slate-600 dark:text-slate-400">

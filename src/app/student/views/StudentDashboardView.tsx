@@ -17,23 +17,6 @@ export async function StudentDashboardView() {
   const db = await getDb();
   const now = new Date();
 
-  // Check if report has been unlocked by this student (or if role is teacher)
-  let isReportUnlocked = false;
-  try {
-    const [profile] = await db
-      .select({
-        whatsappConsent: profiles.whatsappConsent,
-        city: profiles.city,
-      })
-      .from(profiles)
-      .where(eq(profiles.id, session.userId));
-
-    isReportUnlocked = Boolean(
-      (session.role as string) === 'teacher' || (profile && profile.whatsappConsent && profile.city),
-    );
-  } catch {
-    isReportUnlocked = false;
-  }
 
   // 1. Fetch published tests with question count
   //
@@ -94,24 +77,8 @@ export async function StudentDashboardView() {
     };
   });
 
-  // Filter & format for pre-unlock vs unlocked state:
-  // Before student writes test and unlocks the report:
-  // - Display only 1 test, which is "Board Readiness Challenge Set A" renamed to "Board Readiness Challenge"
-  // - Initially do not display the 2 diagnostic tests callout
-  // Once student unlocks the report:
-  // - Display the full screen as it is (all tests, original names, and the 2 diagnostic tests callout)
-  const setATest = availableList.find((t) => t.title.toLowerCase().includes('set a')) ?? availableList[0];
-
-  const displayList = isReportUnlocked
-    ? availableList
-    : setATest
-      ? [
-        {
-          ...setATest,
-          title: 'Board Readiness Challenge',
-        },
-      ]
-      : [];
+  // Show all available tests with actual titles
+  const displayList = availableList;
 
   // 4. Completed attempts for history review
   const completedList = studentAttempts
@@ -121,9 +88,7 @@ export async function StudentDashboardView() {
       const resultsAvailable = test?.resultsPolicy === 'immediate' || Boolean(test?.releasedAt);
       return {
         ...a,
-        testTitle: !isReportUnlocked
-          ? 'Board Readiness Challenge'
-          : (test?.title ?? 'Board Readiness Challenge Test'),
+        testTitle: test?.title ?? 'JEE Online Test',
         resultsAvailable,
       };
     });
@@ -139,7 +104,7 @@ export async function StudentDashboardView() {
             <div className="min-w-0">
               <span className="inline-flex items-center rounded-full bg-brand-800/80 px-2.5 py-0.5 text-xs font-semibold text-accent-400 dark:bg-brand-900/90">
                 <Sparkles className="mr-1 size-3" />
-                Board Readiness Challenge Preparation
+                JEE Online Test Preparation
               </span>
               <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-white truncate sm:text-wrap">
                 Welcome, {session.fullName}!
@@ -167,20 +132,6 @@ export async function StudentDashboardView() {
             <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">Available Tests</h2>
             <span className="text-xs text-slate-500 dark:text-slate-400">{displayList.length} total</span>
           </div>
-
-          {/* Diagnostic Test Info Callout: Only visible once the student unlocks the report */}
-          {isReportUnlocked && displayList.length > 0 && (
-            <div className="rounded-2xl border border-brand-200/90 bg-gradient-to-r from-brand-50/90 via-indigo-50/60 to-blue-50/60 p-4 text-xs sm:text-sm text-slate-700 dark:border-brand-900/60 dark:bg-gradient-to-r dark:from-slate-900 dark:via-brand-950/30 dark:to-slate-900 dark:text-slate-300 shadow-2xs">
-              <div className="flex items-start gap-3">
-                <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white shadow-2xs mt-0.5">
-                  <Info className="size-4" />
-                </div>
-                <p className="leading-relaxed">
-                  Below are 2 diagnostic tests and each test has only one attempt.
-                </p>
-              </div>
-            </div>
-          )}
 
           {displayList.length === 0 ? (
             <EmptyState

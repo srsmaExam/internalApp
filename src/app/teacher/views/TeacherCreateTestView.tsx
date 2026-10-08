@@ -70,7 +70,7 @@ export function TeacherCreateTestView() {
       </div>
 
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">Create New Board Readiness Challenge Test</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">Create New JEE Online Test</h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Set up test parameters. You can select and arrange questions on the next screen.
         </p>
@@ -94,7 +94,7 @@ export function TeacherCreateTestView() {
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Board Readiness Challenge Mock Test #1 (PCM)"
+                placeholder="e.g. JEE Online Test Mock Test #1 (PCM)"
                 required
               />
             </div>
@@ -122,7 +122,7 @@ export function TeacherCreateTestView() {
                   onChange={(e) => setDurationMinutes(Number(e.target.value))}
                   required
                 />
-                <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Default for full Board Readiness Challenge: 180 min (3 hrs)</p>
+                <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Default for full JEE Online Test: 180 min (3 hrs)</p>
               </div>
 
               <div>

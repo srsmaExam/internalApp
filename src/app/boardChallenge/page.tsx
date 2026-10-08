@@ -27,11 +27,11 @@ import {
 import { BRAND } from '@/config/branding';
 
 export const metadata = {
-  title: 'Board Readiness Challenge | Shri Ram Smart Minds Academy',
+  title: 'JEE Online Test | Shri Ram Smart Minds Academy',
   description:
     'A Diagnostic Test For Class 10 Students. 20 Questions | 20 Minutes in Mathematics & Science. Take the challenge and get your FREE Strengths & Improvement Report!',
   keywords: [
-    'Board Readiness Challenge',
+    'JEE Online Test',
     'Class 10 Diagnostic Test',
     'SRSMA',
     'Shri Ram Smart Minds Academy',
@@ -40,7 +40,7 @@ export const metadata = {
     'Bandlaguda Jagir Hyderabad',
   ],
   openGraph: {
-    title: 'Board Readiness Challenge | Shri Ram Smart Minds Academy',
+    title: 'JEE Online Test | Shri Ram Smart Minds Academy',
     description: 'Are you Board Ready? 20 Questions | 20 Minutes in Mathematics & Science for Class 10 Students.',
     images: [{ url: '/board-challenge/pamphlet_full_hd.webp' }],
   },
@@ -147,9 +147,9 @@ export default function BoardChallengePage() {
                   <span className="h-[1.5px] flex-1 bg-gradient-to-l from-transparent via-amber-400/80 to-amber-500" />
                 </div>
 
-                {/* 3. Board Readiness Challenge (Commanding Header) */}
+                {/* 3. JEE Online Test (Commanding Header) */}
                 <h2 className="text-balance text-xl font-black tracking-tight uppercase text-slate-900 drop-shadow-sm xs:text-2xl sm:text-4xl md:text-4xl lg:text-5xl dark:text-white">
-                  BOARD READINESS CHALLENGE
+                  JEE ONLINE TEST
                 </h2>
 
                 {/* 4. Subtitle */}
@@ -214,7 +214,7 @@ export default function BoardChallengePage() {
                   <div className="relative [mask-image:linear-gradient(to_bottom,black_82%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_82%,transparent_100%)]">
                     <Image
                       src="/board-challenge/girl.webp"
-                      alt="Class 10 Student holding Mathematics and Science textbooks for Board Readiness Challenge"
+                      alt="Class 10 Student holding Mathematics and Science textbooks for JEE Online Test"
                       width={971}
                       height={1484}
                       priority
@@ -412,7 +412,7 @@ export default function BoardChallengePage() {
                       If you answered <span className="font-black text-amber-400">yes</span> to even one of these, you don’t need more hours—you need to know where you are losing marks.
                     </p>
                     <p className="mt-2 text-sm text-slate-300 sm:text-base">
-                      Take the Board Readiness challenge to pinpoint your score leaks and get your instant 5-page report.
+                      Take the JEE Online Test to pinpoint your score leaks and get your instant 5-page report.
                     </p>
                   </div>
 
