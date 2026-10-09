@@ -35,7 +35,7 @@ describe('Lead Action Tracking Schema & Validation', () => {
   });
 
   it('generates the correct WhatsApp prefilled URL and message', () => {
-    const message = `Hi, I just completed the Board Readiness Challenge at Shri Ram Smart Minds Academy. Based on my diagnostic report, I would like to enroll in the Class 10 Board Mastery Course. Please share the next steps and batch details.`;
+    const message = `Hi, I just completed the JEE Online Test at Shri Ram Smart Minds Academy. Based on my diagnostic report, I would like to enroll in the Class 10 Board Mastery Course. Please share the next steps and batch details.`;
     const encoded = encodeURIComponent(message);
     const expectedUrl = `https://wa.me/918463911854?text=${encoded}`;
 
@@ -43,6 +43,6 @@ describe('Lead Action Tracking Schema & Validation', () => {
     expect(decodeURIComponent(encoded)).toBe(message);
     expect(message).toContain('Shri Ram Smart Minds Academy');
     expect(message).toContain('Class 10 Board Mastery Course');
-    expect(message).toContain('Board Readiness Challenge');
+    expect(message).toContain('JEE Online Test');
   });
 });

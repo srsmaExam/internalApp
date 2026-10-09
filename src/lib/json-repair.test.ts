@@ -23,7 +23,7 @@ describe('json-repair', () => {
     expect(parsed.text).toBe('Line 1\nLine 2\n"quoted"');
   });
 
-  it('repairs full Board Readiness Challenge paper JSON with unescaped math commands', () => {
+  it('repairs full JEE Online Test paper JSON with unescaped math commands', () => {
     const raw = `{
       "paperMeta": {
         "detectedTitle": null,

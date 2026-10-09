@@ -180,7 +180,7 @@ export function TeacherCohortAnalyticsClient() {
               ? 'border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300'
               : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
-          title="Self-service phone-login leads and Board Readiness Challenge candidates"
+          title="Self-service phone-login leads and JEE Online Test candidates"
         >
           Prospective Leads
         </button>
@@ -532,7 +532,7 @@ export function TeacherCohortAnalyticsClient() {
                     {search || selectedBatch
                       ? 'No candidates match the filter criteria.'
                       : enrollmentTab === 'provisional'
-                        ? 'No prospective leads found. Prospective leads register via the Board Readiness Challenge phone login.'
+                        ? 'No prospective leads found. Prospective leads register via the JEE Online Test phone login.'
                         : 'No student accounts found in this category.'}
                   </TableCell>
                 </TableRow>

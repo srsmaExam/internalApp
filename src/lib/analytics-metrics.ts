@@ -1,5 +1,5 @@
 /**
- * Statistical and psychometric calculations for Board Readiness Challenge test analytics.
+ * Statistical and psychometric calculations for JEE Online Test test analytics.
  * Pure functions, zero database or runtime dependencies.
  */
 

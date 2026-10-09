@@ -259,9 +259,9 @@ async function main() {
 
   console.log(`[sync-local-paper] Synced ${imageRows.length} image references (${syncedImagesCount} binaries uploaded to stored_files).`);
 
-  // 6. Upsert Test with audience = 'public' (Board Readiness Challenge)
+  // 6. Upsert Test with audience = 'public' (JEE Online Test)
   const testConfig = data.test ?? {};
-  const testTitle = testConfig.title ?? p.title ?? 'Board Readiness Challenge — Class 10 Diagnostic Test';
+  const testTitle = testConfig.title ?? p.title ?? 'JEE Online Test — Class 10 Diagnostic Test';
 
   const [existingTest] = await db
     .select({ id: tests.id })

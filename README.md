@@ -1,6 +1,6 @@
-# SRSMA — Board Readiness Challenge Computer-Based Test (CBT) Platform
+# SRSMA — JEE Online Test Computer-Based Test (CBT) Platform
 
-A full-featured, institutional-grade Board Readiness Challenge Computer-Based Test (CBT) platform engineered for **SRSMA**. Built to replicate the exact National Testing Agency (NTA) exam environment, question delivery, timing algorithms, and score calibration.
+A full-featured, institutional-grade JEE Online Test Computer-Based Test (CBT) platform engineered for **SRSMA**. Built to replicate the exact National Testing Agency (NTA) exam environment, question delivery, timing algorithms, and score calibration.
 
 Runs in two flexible modes:
 - **Production (Cloud)**: Deployed on **Vercel** + **Supabase (PostgreSQL)** + **cron-job.org** with **$0.00 / month operating cost**.
@@ -83,7 +83,7 @@ Open **[http://localhost:3000](http://localhost:3000)**. Faculty logs in at `/SR
 - **Batch Management**: Filter students by batch, view active/inactive status, and check individual test attempt statistics.
 
 ### 2. Digitize Question Papers (`/teacher/papers` & `/teacher/questions/upload`)
-- **Upload PDF**: Upload official Board Readiness Challenge question paper PDFs under `/teacher/papers`.
+- **Upload PDF**: Upload official JEE Online Test question paper PDFs under `/teacher/papers`.
 - **Extraction Prompts**: Copy the standardized prompt from `/teacher/extraction-prompt`, run it in Gemini/Claude with the PDF attached, and copy the JSON.
 - **Ingest & Validate**: Paste JSON into the Ingest tab. Built-in Zod schema validation checks syntax and auto-repairs formatting issues before staging as drafts.
 - **Crop Studio**: Open questions in `/teacher/questions/[id]` with split-screen PDF canvas. Drag a box over any circuit, diagram, or graph on the PDF to instantly crop and attach it to `[[IMG:...]]` placeholders as an optimized WebP.

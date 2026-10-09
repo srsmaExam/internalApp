@@ -12,7 +12,7 @@
 
 ## 1. Executive Vision & Objectives
 
-Following the production deployment and consolidation of the **SRSMA Board Readiness Challenge CBT Platform** onto Vercel and Supabase ([PRODUCTION-SETUP-GUIDE.md](PRODUCTION-SETUP-GUIDE.md)), the core engine successfully achieves $0.00/month operating cost with 100% test coverage for leak prevention and atomic grading.
+Following the production deployment and consolidation of the **SRSMA JEE Online Test CBT Platform** onto Vercel and Supabase ([PRODUCTION-SETUP-GUIDE.md](PRODUCTION-SETUP-GUIDE.md)), the core engine successfully achieves $0.00/month operating cost with 100% test coverage for leak prevention and atomic grading.
 
 This document proposes **state-of-the-art architectural, aesthetic, user flow, and design system enhancements**. The goal is to elevate the platform from a functional CBT tool to an **institutional-grade, visually stunning, and frictionless educational experience** that rivals commercial testing software (such as Allen, Resonance, and the official NTA Portal).
 
@@ -151,7 +151,7 @@ Before entering a high-stakes 3-hour test at `/student/tests/[id]`:
 - **Screen Orientation Lock**: On mobile devices, suggest landscape mode for an optimal CBT layout.
 
 ### 4.3 Section Review Modal Before Submission
-Currently, clicking "Submit Test" directly prompts for confirmation. In official NTA Board Readiness Challenge exams, candidates are presented with a **comprehensive sectional breakdown modal**:
+Currently, clicking "Submit Test" directly prompts for confirmation. In official NTA JEE Online Test exams, candidates are presented with a **comprehensive sectional breakdown modal**:
 
 ```
 +-------------------------------------------------------------------------------+

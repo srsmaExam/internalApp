@@ -268,7 +268,7 @@ solutions for one — assert the other row is byte-identical afterwards.
 }
 ```
 
-Auto-provisioning is clearly **intentional** — the Board Readiness Challenge landing page advertises
+Auto-provisioning is clearly **intentional** — the JEE Online Test landing page advertises
 *"Instant Student Login • No Password Needed"*
 ([boardChallenge/page.tsx:46](src/app/boardChallenge/page.tsx#L46)). The defect is that the account
 it creates is **unscoped**, and three downstream layers assume any student is a legitimate student:
@@ -1214,7 +1214,7 @@ useEffect(() => {
 }, [router]);
 ```
 
-Every visitor to `/login` — including the entire Board Readiness Challenge funnel, which lands there
+Every visitor to `/login` — including the entire JEE Online Test funnel, which lands there
 from the landing-page CTA — triggers percentile, chapter-accuracy and rank-progression computation
 just to test cookie presence. On a cold Supabase pooler connection from a phone on 4G this is the
 slowest thing on the page, and the result is discarded.

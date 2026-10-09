@@ -1,8 +1,8 @@
-# SRSMA Board Readiness Challenge CBT Platform — Production Operations & User Guide
+# SRSMA JEE Online Test CBT Platform — Production Operations & User Guide
 
-A comprehensive, production-grade guide for administrators, faculty, and students using the **SRSMA Board Readiness Challenge Computer-Based Test (CBT)** platform.
+A comprehensive, production-grade guide for administrators, faculty, and students using the **SRSMA JEE Online Test Computer-Based Test (CBT)** platform.
 
-This platform replicates the exact National Testing Agency (NTA) Board Readiness Challenge testing environment, powered by a modern, zero-cost production stack:
+This platform replicates the exact National Testing Agency (NTA) JEE Online Test testing environment, powered by a modern, zero-cost production stack:
 - **Hosting & Serverless Compute**: [Vercel](https://vercel.com) (Next.js 15 App Router)
 - **Database**: [Supabase](https://supabase.com) (PostgreSQL with Supavisor Transaction Pooler)
 - **Exam Timer Daemon**: [cron-job.org](https://cron-job.org) (2-minute HTTP sweep keep-alive)
@@ -128,7 +128,7 @@ Sneha Reddy,sneha.r,sneha.reddy@example.com,+919876543213,Droppers 2025,112345
 
 ### 3.2 Question Paper Digitization & Crop Studio
 
-Transform printed or PDF Board Readiness Challenge question papers into verified, digital KaTeX CBT questions:
+Transform printed or PDF JEE Online Test question papers into verified, digital KaTeX CBT questions:
 
 ```
 [Upload PDF] ──> [Run Extraction Prompt via LLM] ──> [Ingest JSON] ──> [Crop Diagrams on Canvas] ──> [Verify Question]
@@ -137,12 +137,12 @@ Transform printed or PDF Board Readiness Challenge question papers into verified
 #### Step 1: Upload Source PDF
 1. Go to **Papers** (`/teacher/papers`).
 2. Click **Upload Paper**.
-3. Enter the Paper Title (e.g. `Board Readiness Challenge 2025 Jan 24 Shift 1`), Paper Code, Year, and select the PDF file.
+3. Enter the Paper Title (e.g. `JEE Online Test 2025 Jan 24 Shift 1`), Paper Code, Year, and select the PDF file.
 4. The platform stores and indexes the PDF file.
 
 #### Step 2: Extract Structured Questions with LLM
 1. Go to **Extraction Prompt** (`/teacher/extraction-prompt`).
-2. Click **Copy Prompt**. The platform copies an engineered, few-shot prompt designed specifically for Board Readiness Challenge (formatting formulas into KaTeX LaTeX and placing `[[IMG:q<num>_fig1]]` placeholders for diagrams).
+2. Click **Copy Prompt**. The platform copies an engineered, few-shot prompt designed specifically for JEE Online Test (formatting formulas into KaTeX LaTeX and placing `[[IMG:q<num>_fig1]]` placeholders for diagrams).
 3. Open [Google Gemini](https://gemini.google.com) or Claude in your browser.
 4. Attach your PDF question paper, paste the copied prompt, and generate the structured JSON output.
 
@@ -196,7 +196,7 @@ Navigate to **Question Bank** (`/teacher/questions`):
 ### 3.5 Test Creation & Exam Builder
 
 #### Step 1: Create Test Parameters (`/teacher/tests/new`)
-1. **Title & Description**: e.g., `Board Readiness Challenge Full Mock Test #01 (PCM)`.
+1. **Title & Description**: e.g., `JEE Online Test Full Mock Test #01 (PCM)`.
 2. **Duration**: Set exam duration in minutes (e.g., `180` for 3 hours).
 3. **Max Retakes**: Typically `1` for formal mocks, or multiple for practice sets.
 4. **Active Schedule Window**:
@@ -295,11 +295,11 @@ Navigate to **Cohort Analytics** (`/teacher/analytics`):
 
 ### 4.3 NTA-Style CBT Test Runner
 
-The Test Runner (`/student/attempts/[id]`) replicates the official Board Readiness Challenge interface:
+The Test Runner (`/student/attempts/[id]`) replicates the official JEE Online Test interface:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ SRSMA Board Readiness Challenge Test Platform  Time Left: [ 02:45:12 ] [Submit]│
+│ SRSMA JEE Online Test Test Platform  Time Left: [ 02:45:12 ] [Submit]│
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ [ Physics (25) ]  [ Chemistry (25) ]  [ Mathematics (25) ]                  │
 ├──────────────────────────────────────────────────┬──────────────────────────┤

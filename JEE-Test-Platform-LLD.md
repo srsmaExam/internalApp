@@ -12,7 +12,7 @@
 |---|---|
 | **Teachers** | **Collaborative Faculty**, shared question bank across Physics, Chemistry, Mathematics, and Biology. Authorship tracked (`created_by`, `verified_by`, `last_edited_by`), optimistic concurrency enforced on every write. |
 | **Students** | Teacher-provisioned, no self-signup. Provisioned individually or via bulk CSV upload with batch tag, phone number, and auto-generated or manual credentials. |
-| **Subjects** | **4 subjects**: `physics`, `chemistry`, `maths`, `biology` (supporting both Board Readiness Challenge and NEET examinations). |
+| **Subjects** | **4 subjects**: `physics`, `chemistry`, `maths`, `biology` (supporting both JEE Online Test and NEET examinations). |
 | **Authentication** | **Dual-Engine Custom Session Auth**: Phone Number Sign-in for students (E.164 normalization, automatic provisioning, no OTP verification required for now, 90-day persistent browser session cookie) and Staff Portal at `/SRSMA` (username + salted scrypt password). Role-based access control (`teacher` vs `student`) stored in signed httpOnly cookies (`jose`). |
 | **Source PDFs & Storage** | **Direct multipart upload** (up to 60 MB, sha256 deduplicated, page count computed via `pdf-lib`). Persisted to local/mounted disk storage under `DATA_DIR` (`data/papers/` and `data/images/`). |
 | **Math/Chemistry Rendering** | **KaTeX + mhchem** for zero-layout-shift mathematical and chemical notation rendering. |
@@ -445,7 +445,7 @@ Extracts official answer keys and step-by-step explanations, matched by `sourceQ
 
 The Test Builder (`/teacher/tests/[id]`) provides a rapid test construction workflow:
 1. **Multi-Criteria Filter**: Filter question bank items by **Search Query**, **Subject**, **Question Type**, **Verification Status**, and **Source Paper**.
-2. **Paper Dropdown with Counts**: The Paper filter displays all ingested papers with real-time counts of available questions (e.g. `BRC-2024-JAN-S1 — Board Readiness Challenge 2024 Shift 1 (30)`).
+2. **Paper Dropdown with Counts**: The Paper filter displays all ingested papers with real-time counts of available questions (e.g. `BRC-2024-JAN-S1 — JEE Online Test 2024 Shift 1 (30)`).
 3. **Paper Sequence Sorting**: When filtered to a specific paper, questions automatically sort by `sourceQno` ascending (`Q1, Q2, Q3...`), mirroring the original paper layout.
 4. **1-Click Batch Ingestion**: Teachers can click **"Add All Filtered Verified"** to pull an entire paper's verified questions into the test in a single click.
 5. **Provenance Badges**: Assigned questions and bank cards display origin paper badges (`📄 JEE-2024-S1 • Q12`) for complete traceability.

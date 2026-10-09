@@ -56,7 +56,7 @@ Docker isn't installed, so a native Postgres service would be an extra install-a
 ## 2. Branding — Shri Ram Smart Minds Academy
 
 **Organization name:** `Shri Ram Smart Minds Academy`
-**Product line:** `Board Readiness Challenge`
+**Product line:** `JEE Online Test`
 **Palette:** deep blue `#1E3A8A` (primary) · amber `#F59E0B` (accent) · slate `#0F172A` text · `#F8FAFC` page ground
 
 All of this goes in **one file**, `src/config/branding.ts`, and nowhere else — so replacing the placeholder later is a single edit, not a find-and-replace across the app:
@@ -64,7 +64,7 @@ All of this goes in **one file**, `src/config/branding.ts`, and nowhere else —
 ```ts
 export const BRAND = {
   orgName:    'Shri Ram Smart Minds Academy',
-  productName:'Board Readiness Challenge',
+  productName:'JEE Online Test',
   shortName:  'SRSMA',
   primary:    '#1E3A8A',
   accent:     '#F59E0B',
@@ -89,7 +89,7 @@ An open book under a lamp flame: literal coaching-centre iconography, legible at
 
 ### Horizontal lockup — `public/brand/logo-lockup.svg`
 
-Same mark at 36px + `SHRI RAM SMART MINDS ACADEMY` (600 weight, `.06em` tracking, `#0F172A`) with `Board Readiness Challenge` beneath in 10px `#64748B`. Used in the app header and on the login page.
+Same mark at 36px + `SHRI RAM SMART MINDS ACADEMY` (600 weight, `.06em` tracking, `#0F172A`) with `JEE Online Test` beneath in 10px `#64748B`. Used in the app header and on the login page.
 
 Also produced: `public/favicon.svg` (the mark alone) and `src/app/icon.svg` for Next.js metadata.
 

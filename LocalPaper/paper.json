@@ -6,22 +6,22 @@
   },
   "paper": {
     "id": "7953b586-2d7c-4127-9157-27c547a1274f",
-    "title": "Board Readiness Challenge",
+    "title": "JEE Online Test",
     "code": "JM-1",
     "examYear": null,
     "pdfPages": 11,
-    "originalFilename": "Board Readiness Challenge Question Paper.pdf",
+    "originalFilename": "JEE Online Test Question Paper.pdf",
     "fileSizeBytes": 2865625,
     "sha256": "fe4f479e631538b7a7389bcfcff694774da04c7fb02f6219726bc8b4e40e9619",
     "extractionMeta": {
       "extractedAt": "2026-09-14T15:37:07.323Z",
-      "detectedTitle": "Board Readiness Challenge Question Paper",
+      "detectedTitle": "JEE Online Test Question Paper",
       "promptVersion": "extract-both-v1",
       "totalQuestionsFound": 20
     }
   },
   "test": {
-    "title": "Board Readiness Challenge",
+    "title": "JEE Online Test",
     "description": null,
     "durationS": 1200,
     "audience": "public",

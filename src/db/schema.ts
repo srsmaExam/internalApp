@@ -63,7 +63,7 @@ export const profiles = pgTable('profiles', {
   passwordHash: text('password_hash'),
   canLogin: boolean('can_login').notNull().default(true),
   // FBR-03: true for self-service accounts auto-provisioned by phone login
-  // (e.g. the Board Readiness Challenge funnel) until a teacher converts them
+  // (e.g. the JEE Online Test funnel) until a teacher converts them
   // to a real enrolled student. Provisional accounts can only see/attempt
   // tests.audience = 'public' and never receive answer keys or solutions.
   isProvisional: boolean('is_provisional').notNull().default(false),
@@ -218,7 +218,7 @@ export const tests = pgTable('tests', {
   releasedAt: timestamp('released_at', { withTimezone: true }),
   isPublished: boolean('is_published').notNull().default(false),
   // FBR-03: 'enrolled' (default) tests are invisible to provisional accounts;
-  // 'public' tests (the Board Readiness Challenge diagnostic) are the only
+  // 'public' tests (the JEE Online Test diagnostic) are the only
   // ones a self-service phone-login account may see or attempt.
   audience: text('audience').$type<'enrolled' | 'public'>().notNull().default('enrolled'),
   createdBy: uuid('created_by')

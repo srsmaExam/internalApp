@@ -1,6 +1,6 @@
 /**
  * Question Metadata CSV parsing, validation, and sample template generator.
- * Aligns with the Board Readiness Challenge question profiling specification.
+ * Aligns with the JEE Online Test question profiling specification.
  */
 
 export interface ParsedMetadataRow {

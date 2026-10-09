@@ -113,7 +113,7 @@ describe('Attempt Lifecycle Integration & Security Suite', () => {
     // Seed Test 1: Immediate results policy
     await db.insert(schema.tests).values({
       id: testId,
-      title: 'Board Readiness Challenge Full Mock 1',
+      title: 'JEE Online Test Full Mock 1',
       durationS: 1800,
       maxAttempts: 3,
       isPublished: true,
@@ -124,7 +124,7 @@ describe('Attempt Lifecycle Integration & Security Suite', () => {
     // Seed Test 2: On-release results policy
     await db.insert(schema.tests).values({
       id: testOnReleaseId,
-      title: 'Board Readiness Challenge Strict Mock 2 (On Release)',
+      title: 'JEE Online Test Strict Mock 2 (On Release)',
       durationS: 1800,
       maxAttempts: 1,
       isPublished: true,

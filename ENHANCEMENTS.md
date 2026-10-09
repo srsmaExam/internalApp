@@ -1,4 +1,4 @@
-# Enhancements & Roadmap — SRSMA Board Readiness Challenge Test Platform
+# Enhancements & Roadmap — SRSMA JEE Online Test Test Platform
 
 **Companion to** [AUDIT-AND-BUG-REPORT.md](AUDIT-AND-BUG-REPORT.md) · commit `e262dde`
 
@@ -393,7 +393,7 @@ Ordered by value-to-effort for a JEE coaching context.
 | 11 | **Question paper PDF export** | Generate a printable paper from a test — `pdf-lib` is already a dependency. | M |
 | 12 | **Import/export a question bank** | JSON round-trip, so banks can move between installs or be version-controlled. | S |
 | 13 | **Multi-correct (MSQ) question type** | JEE Advanced uses it; the schema's `qtype_enum` and grading both assume single-answer. Plan the migration before the bank grows. | L |
-| 14 | **Assertion-Reason & Match-the-Column types** | Common in Board Readiness Challenge. Renderable today as MCQ, but they'd benefit from dedicated layouts. | M |
+| 14 | **Assertion-Reason & Match-the-Column types** | Common in JEE Online Test. Renderable today as MCQ, but they'd benefit from dedicated layouts. | M |
 
 ---
 

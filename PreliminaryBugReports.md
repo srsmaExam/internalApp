@@ -14,7 +14,7 @@ Following the successful implementation of the initial audit (`AUDIT-AND-BUG-REP
 2. **Dynamic Page Dispatchers**: Unifying student and teacher routes into catch-all dispatchers (`/student/[[...slug]]` and `/teacher/[[...slug]]`).
 3. **Dual-Persistence Media Layer**: Adding the `stored_files` PostgreSQL table to ensure cropped diagrams and PDFs survive serverless container teardowns.
 4. **Student Phone Authentication**: Replacing passwords with mobile number sign-in and 90-day persistent sessions.
-5. **Board Readiness Challenge**: A dedicated public landing page (`/boardChallenge`) for marketing and student acquisition.
+5. **JEE Online Test**: A dedicated public landing page (`/boardChallenge`) for marketing and student acquisition.
 
 ### Static Verification Matrix
 
@@ -280,7 +280,7 @@ if (unresolvedImages === 'true') {
 }
 ```
 There are two structural flaws:
-1. **Option Placeholders Ignored:** In Board Readiness Challenge, diagrams frequently appear in multiple-choice options (e.g. circuits or graphs as Options A, B, C, D). These are stored in `questions.options`. The query only checks `questions.body`, completely ignoring placeholders in options or solutions.
+1. **Option Placeholders Ignored:** In JEE Online Test, diagrams frequently appear in multiple-choice options (e.g. circuits or graphs as Options A, B, C, D). These are stored in `questions.options`. The query only checks `questions.body`, completely ignoring placeholders in options or solutions.
 2. **Multi-Image False Negative:** If a question contains two placeholders (e.g. `[[IMG:circuit_1]]` and `[[IMG:graph_2]]`), and the teacher has only cropped the first one, `question_images` has 1 row for that question. `NOT EXISTS (...)` evaluates to `FALSE`, so the question is **excluded** from the unresolved list!
 
 #### Impact
@@ -294,7 +294,7 @@ Cross-reference the count of placeholders in `body` + `options` against the coun
 ### BUG-07: Light Mode Contrast Breakdown on System-Light Devices
 - **Location:** [`src/app/layout.tsx:33-45`](file:///c:/Users/panga/OneDrive/Desktop/Seva/SRSMA/Study_App/src/app/layout.tsx#L33-L45), [`src/app/boardChallenge/page.tsx:50`](file:///c:/Users/panga/OneDrive/Desktop/Seva/SRSMA/Study_App/src/app/boardChallenge/page.tsx#L50)
 - **Classification:** Visual Regression / Contrast Inaccessibility
-- **Trigger:** A student visits the Board Readiness Challenge page (`/boardChallenge`) on a computer or smartphone where the OS is set to Light Mode.
+- **Trigger:** A student visits the JEE Online Test page (`/boardChallenge`) on a computer or smartphone where the OS is set to Light Mode.
 
 #### Root Cause Analysis
 1. In commit `b0fdf8a`, `<ThemeToggle />` was removed from `/boardChallenge`.
@@ -338,7 +338,7 @@ When a teacher uploads an 8 MB or 15 MB scanned JEE paper, Vercel's edge gateway
 The request never reaches Next.js or `papers/index.ts`. The teacher sees a generic "Network error: Could not connect to server" error.
 
 #### Impact
-Faculty cannot upload high-resolution official Board Readiness Challenge question papers directly in production.
+Faculty cannot upload high-resolution official JEE Online Test question papers directly in production.
 
 #### Recommended Fix
 Integrate direct client-to-storage uploads (Supabase Storage bucket with pre-signed upload URLs), or compress PDFs client-side using `pdf-lib` before uploading.
