@@ -170,7 +170,7 @@ async function getAccessToken(): Promise<string> {
  * E.g. 'papers/1a52b506...pdf' -> 'papers__1a52b506...pdf'
  */
 export function sanitizeDriveFileName(relativeKey: string): string {
-  return relativeKey.replace(/[\/\\]/g, '__');
+  return relativeKey.replace(/[/\\]/g, '__');
 }
 
 /**
