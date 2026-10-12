@@ -42,9 +42,9 @@ function GoogleAnalyticsRouteTracker({ gaId }: { gaId: string }) {
 }
 
 export function GoogleAnalytics({ gaId }: { gaId?: string }) {
-  const measurementId = gaId || process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'G-D36DLF1HJX';
+  const measurementId = gaId || process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
-  if (!measurementId) {
+  if (!measurementId || measurementId === 'disabled' || measurementId === 'off') {
     return null;
   }
 
