@@ -83,11 +83,40 @@ export function getGoogleDriveFolderId(): string {
 }
 
 /**
+ * Ensures Google Drive credentials are synchronized from Cloudflare Worker context
+ * when running inside Cloudflare OpenNext edge runtime.
+ */
+export async function syncCloudflareEnv(): Promise<void> {
+  try {
+    const { getCloudflareContext } = await import('@opennextjs/cloudflare');
+    let cfContext: any;
+    try {
+      cfContext = await getCloudflareContext({ async: true });
+    } catch {
+      cfContext = getCloudflareContext();
+    }
+    const cfEnv = cfContext?.env as Record<string, any> | undefined;
+    if (cfEnv) {
+      if (cfEnv.GOOGLE_CLIENT_ID && !process.env.GOOGLE_CLIENT_ID) process.env.GOOGLE_CLIENT_ID = String(cfEnv.GOOGLE_CLIENT_ID);
+      if (cfEnv.GOOGLE_CLIENT_SECRET && !process.env.GOOGLE_CLIENT_SECRET) process.env.GOOGLE_CLIENT_SECRET = String(cfEnv.GOOGLE_CLIENT_SECRET);
+      if (cfEnv.GOOGLE_REFRESH_TOKEN && !process.env.GOOGLE_REFRESH_TOKEN) process.env.GOOGLE_REFRESH_TOKEN = String(cfEnv.GOOGLE_REFRESH_TOKEN);
+      if (cfEnv.GOOGLE_DRIVE_FOLDER_ID && !process.env.GOOGLE_DRIVE_FOLDER_ID) process.env.GOOGLE_DRIVE_FOLDER_ID = String(cfEnv.GOOGLE_DRIVE_FOLDER_ID);
+      if (cfEnv.GOOGLE_SERVICE_ACCOUNT_EMAIL && !process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL = String(cfEnv.GOOGLE_SERVICE_ACCOUNT_EMAIL);
+      if (cfEnv.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY && !process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY) process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY = String(cfEnv.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY);
+    }
+  } catch {
+    // Outside of Cloudflare request context
+  }
+}
+
+/**
  * Obtains an OAuth 2.0 access token:
  * 1. Using user OAuth 2.0 Refresh Token (uses personal 2 TB AI Pro storage quota!)
  * 2. Falling back to Service Account RS256 JWT assertion via jose.
  */
 async function getAccessToken(): Promise<string> {
+  await syncCloudflareEnv();
+
   if (cachedAccessToken && Date.now() < cachedAccessToken.expiresAt) {
     return cachedAccessToken.token;
   }

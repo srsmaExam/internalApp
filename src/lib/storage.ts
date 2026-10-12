@@ -8,10 +8,10 @@ import { storedFiles } from '@/db/schema';
 import { imageKey, paperKey, resolveDataPath } from './paths';
 import {
   isGoogleDriveConfigured,
+  syncCloudflareEnv,
   uploadToGoogleDrive,
   downloadFromGoogleDrive,
   getGoogleDriveMetadata,
-  findFileInGoogleDrive,
   deleteFromGoogleDrive,
   deletePrefixFromGoogleDrive,
 } from './gdrive';
@@ -81,6 +81,7 @@ export async function saveBufferWithHash(
   bytes: Buffer,
   contentType: string = 'application/pdf',
 ): Promise<{ absPath: string; sha256: string; size: number }> {
+  await syncCloudflareEnv();
   const sha256 = createHash('sha256').update(bytes).digest('hex');
 
   // Update in-memory cache
@@ -154,6 +155,7 @@ export function paperAbsPath(relativeKey: string): string {
  * Crucial for HTTP conditional requests (ETag / If-None-Match) to avoid bandwidth egress.
  */
 export async function getFileMetadata(relativeKey: string): Promise<FileMetadata | null> {
+  await syncCloudflareEnv();
   const cached = memoryCache.get(relativeKey);
   if (cached) {
     return { contentType: cached.contentType, size: cached.size, sha256: cached.sha256 };
@@ -228,6 +230,7 @@ export async function getFileMetadata(relativeKey: string): Promise<FileMetadata
  * Reads a file record from memory cache, disk cache, Google Drive, or database.
  */
 export async function readFileRecord(relativeKey: string): Promise<FileRecord | null> {
+  await syncCloudflareEnv();
   const cached = memoryCache.get(relativeKey);
   if (cached) {
     return cached;
@@ -321,6 +324,7 @@ export async function hasFile(relativeKey: string): Promise<boolean> {
 }
 
 export async function deleteIfExists(relativeKey: string): Promise<void> {
+  await syncCloudflareEnv();
   evictMemoryCache(relativeKey);
 
   // 1. Delete from Google Drive
