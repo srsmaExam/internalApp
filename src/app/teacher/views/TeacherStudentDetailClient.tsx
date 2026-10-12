@@ -44,7 +44,6 @@ import {
   TableRow,
   useToast,
 } from '@/components/ui';
-import { StudentAnalyticsClient } from '@/app/student/analytics/StudentAnalyticsClient';
 
 type StudentProfile = {
   id: string;
@@ -81,7 +80,7 @@ export function TeacherStudentDetailClient({
   initialTab = 'responses',
 }: {
   studentId: string;
-  initialTab?: 'analytics' | 'responses';
+  initialTab?: 'responses' | 'feedback';
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -89,7 +88,7 @@ export function TeacherStudentDetailClient({
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [attempts, setAttempts] = useState<AttemptSummary[]>([]);
   const [allStudents, setAllStudents] = useState<AllStudentOption[]>([]);
-  const [activeTab, setActiveTab] = useState<'analytics' | 'responses' | 'feedback'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'responses' | 'feedback'>(initialTab);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -360,19 +359,6 @@ export function TeacherStudentDetailClient({
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => setActiveTab('analytics')}
-            className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-colors ${
-              activeTab === 'analytics'
-                ? 'border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300'
-                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            <Sparkles className="size-4" />
-            Board Readiness &amp; Analytics
-          </button>
-
-          <button
-            type="button"
             onClick={() => setActiveTab('responses')}
             className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-colors ${
               activeTab === 'responses'
@@ -398,23 +384,6 @@ export function TeacherStudentDetailClient({
           </button>
         </div>
       </div>
-
-      {/* Tab 1: Analytics & Board Readiness */}
-      {activeTab === 'analytics' && (
-        <div>
-          {loading && !student ? (
-            <div className="flex justify-center py-16">
-              <Spinner className="size-8 text-brand-600 dark:text-brand-400" />
-            </div>
-          ) : (
-            <StudentAnalyticsClient
-              studentId={studentId}
-              studentName={student?.fullName}
-              isTeacherView={true}
-            />
-          )}
-        </div>
-      )}
 
       {/* Tab 2: Test Responses & Solutions */}
       {activeTab === 'responses' && (
@@ -509,20 +478,12 @@ export function TeacherStudentDetailClient({
                           {isCompleted ? (
                             <div className="flex items-center justify-end gap-1.5">
                               <Link
-                                href={`/teacher/students/${studentId}/attempts/${a.attemptId}?tab=solutions`}
+                                href={`/teacher/students/${studentId}/attempts/${a.attemptId}`}
                                 className={buttonClass('secondary', 'sm')}
                                 title="Review question responses and faculty solutions"
                               >
                                 <Eye className="size-3.5" />
                                 <span>Solutions</span>
-                              </Link>
-                              <Link
-                                href={`/teacher/students/${studentId}/attempts/${a.attemptId}?tab=report`}
-                                className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1 text-xs font-bold text-white shadow-xs hover:bg-brand-500 transition"
-                                title="View 5-Page Board Readiness Diagnostic Report"
-                              >
-                                <Award className="size-3.5" />
-                                <span>5-Page Report</span>
                               </Link>
                             </div>
                           ) : (

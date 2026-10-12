@@ -9,7 +9,7 @@ export async function TeacherTestBuilderView({
   initialTab,
 }: {
   testId: string;
-  initialTab?: 'questions' | 'picker' | 'settings' | 'metadata';
+  initialTab?: 'questions' | 'picker' | 'settings';
 }) {
   const db = await getDb();
 

@@ -84,7 +84,6 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
     .select({
       fullName: profiles.fullName,
       isProvisional: profiles.isProvisional,
-      whatsappConsent: profiles.whatsappConsent,
       city: profiles.city,
       gender: profiles.gender,
       board: profiles.board,
@@ -282,7 +281,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
       city: studentProfile?.city ?? null,
       classLevel: studentProfile?.classLevel ?? 'X',
       gender: studentProfile?.gender ?? null,
-      isFormFilled: Boolean(studentProfile?.whatsappConsent && studentProfile?.city),
+      isFormFilled: Boolean(studentProfile?.city),
     },
     allAttempts: allAttempts.map((a) => ({
       id: a.id,

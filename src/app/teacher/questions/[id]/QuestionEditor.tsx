@@ -561,103 +561,117 @@ export function QuestionEditor({
               {/* Profiling & Metadata Section */}
               <div className="mt-4 space-y-3 rounded-lg border border-slate-200/80 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-900/40">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  Question Profiling & Metadata
+                  Question Profiling & Metadata (SampleReport.xlsx)
                 </h4>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <Label>Primary Skill</Label>
-                    <Input
-                      value={fields.metadata?.primarySkill ?? ''}
-                      onChange={(e) =>
+                    <Label>Question Type</Label>
+                    <Select
+                      value={fields.metadata?.questionType ?? (fields.type === 'integer' ? 'NVQ' : 'MCQ')}
+                      onChange={(e) => {
+                        const val = e.target.value;
                         patchFields({
-                          metadata: { ...(fields.metadata ?? {}), primarySkill: e.target.value || null },
-                        })
-                      }
-                      placeholder="e.g. Concept Application"
-                    />
+                          type: val === 'NVQ' ? 'integer' : 'mcq',
+                          metadata: { ...(fields.metadata ?? {}), questionType: val },
+                        });
+                      }}
+                    >
+                      <option value="MCQ">MCQ</option>
+                      <option value="NVQ">NVQ</option>
+                    </Select>
                   </div>
                   <div>
-                    <Label>Cognitive Level</Label>
+                    <Label>Sub-Topic</Label>
                     <Input
-                      value={fields.metadata?.cognitiveLevel ?? ''}
+                      value={fields.metadata?.subTopic ?? ''}
                       onChange={(e) =>
                         patchFields({
-                          metadata: { ...(fields.metadata ?? {}), cognitiveLevel: e.target.value || null },
+                          metadata: { ...(fields.metadata ?? {}), subTopic: e.target.value || null },
                         })
                       }
-                      placeholder="e.g. Apply, Analyse"
+                      placeholder="e.g. Distance & Lines"
                     />
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
                   <div>
-                    <Label>Diagnostic Weight</Label>
+                    <Label>Difficulty (Granular 1-10)</Label>
                     <Input
                       type="number"
                       min={1}
-                      max={5}
-                      value={fields.metadata?.diagnosticWeight ?? ''}
+                      max={10}
+                      value={fields.metadata?.difficultyGranular ?? (fields.difficulty ?? '')}
+                      onChange={(e) => {
+                        const num = e.target.value ? Number(e.target.value) : null;
+                        const cat = num != null ? (num >= 8 ? 'Hard' : num <= 4 ? 'Easy' : 'Medium') : null;
+                        patchFields({
+                          difficulty: num,
+                          metadata: {
+                            ...(fields.metadata ?? {}),
+                            difficultyGranular: num,
+                            difficultyCategorical: cat,
+                            difficultyLabel: cat,
+                          },
+                        });
+                      }}
+                      placeholder="e.g. 7"
+                    />
+                  </div>
+                  <div>
+                    <Label>Difficulty (Categorical)</Label>
+                    <Select
+                      value={fields.metadata?.difficultyCategorical ?? fields.metadata?.difficultyLabel ?? 'Medium'}
                       onChange={(e) =>
                         patchFields({
                           metadata: {
                             ...(fields.metadata ?? {}),
-                            diagnosticWeight: e.target.value ? Number(e.target.value) : null,
+                            difficultyCategorical: e.target.value,
+                            difficultyLabel: e.target.value,
                           },
                         })
                       }
-                      placeholder="e.g. 1, 2, 3"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <Label>Concept Tested</Label>
-                    <Input
-                      value={fields.metadata?.conceptTested ?? ''}
-                      onChange={(e) =>
-                        patchFields({
-                          metadata: { ...(fields.metadata ?? {}), conceptTested: e.target.value || null },
-                        })
-                      }
-                      placeholder="e.g. Relationship between HCF and LCM"
-                    />
+                    >
+                      <option value="Easy">Easy</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Hard">Hard</option>
+                    </Select>
                   </div>
                   <div>
-                    <Label>Prerequisite Concept</Label>
-                    <Input
-                      value={fields.metadata?.prerequisiteConcept ?? ''}
+                    <Label>Phase (1, 2, 3)</Label>
+                    <Select
+                      value={String(fields.metadata?.phase ?? 2)}
                       onChange={(e) =>
                         patchFields({
-                          metadata: { ...(fields.metadata ?? {}), prerequisiteConcept: e.target.value || null },
+                          metadata: { ...(fields.metadata ?? {}), phase: Number(e.target.value) },
                         })
                       }
-                      placeholder="e.g. HCF/LCM concept"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <Label>Secondary Skill</Label>
-                    <Input
-                      value={fields.metadata?.secondarySkill ?? ''}
-                      onChange={(e) =>
-                        patchFields({
-                          metadata: { ...(fields.metadata ?? {}), secondarySkill: e.target.value || null },
-                        })
-                      }
-                      placeholder="e.g. Calculation"
-                    />
+                    >
+                      <option value="1">Phase 1</option>
+                      <option value="2">Phase 2</option>
+                      <option value="3">Phase 3</option>
+                    </Select>
                   </div>
                   <div>
-                    <Label>Expected Time Range (comma-separated, s)</Label>
+                    <Label>ETA (Seconds)</Label>
                     <Input
-                      value={fields.metadata?.expectedTime ?? ''}
-                      onChange={(e) =>
+                      type="number"
+                      step={15}
+                      min={15}
+                      max={600}
+                      value={fields.metadata?.etaSeconds ?? (fields.expectedTimeS ?? '')}
+                      onChange={(e) => {
+                        const val = e.target.value ? Number(e.target.value) : null;
                         patchFields({
-                          metadata: { ...(fields.metadata ?? {}), expectedTime: e.target.value || null },
-                        })
-                      }
-                      placeholder="e.g. 45,60"
+                          expectedTimeS: val,
+                          metadata: {
+                            ...(fields.metadata ?? {}),
+                            etaSeconds: val,
+                            expectedTime: val ? String(val) : null,
+                          },
+                        });
+                      }}
+                      placeholder="e.g. 180"
                     />
                   </div>
                 </div>

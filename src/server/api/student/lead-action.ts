@@ -35,20 +35,6 @@ export const POST = withApi(async (req) => {
     source,
   });
 
-  // 2. Set profile flags
-  const updateData: Partial<typeof profiles.$inferInsert> = {};
-  if (action === 'whatsapp_contact_us') {
-    updateData.whatsappContactClicked = true;
-  } else if (action === 'whatsapp_enroll_now') {
-    updateData.whatsappEnrollClicked = true;
-  }
-
-  if (Object.keys(updateData).length > 0) {
-    await db
-      .update(profiles)
-      .set(updateData)
-      .where(eq(profiles.id, session.userId));
-  }
 
   return json({
     ok: true,

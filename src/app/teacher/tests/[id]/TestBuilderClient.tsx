@@ -42,7 +42,6 @@ import {
 } from '@/components/ui';
 import { QuestionBody } from '@/components/Katex';
 import { fromLocalInputValue, toLocalInputValue } from '@/lib/datetime';
-import { TestMetadataTable } from './TestMetadataTable';
 
 type AssignedQuestion = {
   testId: string;
@@ -122,7 +121,9 @@ export function TestBuilderClient({
   const { toast } = useToast();
   const [test, setTest] = useState(initialTest);
   const [assigned, setAssigned] = useState<AssignedQuestion[]>(initialAssignedQuestions);
-  const [activeTab, setActiveTab] = useState<'questions' | 'picker' | 'settings' | 'metadata'>(defaultTab);
+  const [activeTab, setActiveTab] = useState<'questions' | 'picker' | 'settings'>(
+    defaultTab === 'metadata' ? 'questions' : defaultTab,
+  );
 
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -668,7 +669,7 @@ export function TestBuilderClient({
             className={buttonClass('secondary', 'sm')}
           >
             <BarChart3 className="mr-1 size-3.5" />
-            Report
+            Analytics
           </Link>
 
           <Button
@@ -789,18 +790,6 @@ export function TestBuilderClient({
         >
           <Plus className="size-4" />
           Add from Bank ({filteredBank.length} available)
-        </button>
-
-        <button
-          onClick={() => setActiveTab('metadata')}
-          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-            activeTab === 'metadata'
-              ? 'border-brand-700 text-brand-700 font-semibold'
-              : 'border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-          }`}
-        >
-          <SlidersHorizontal className="size-4" />
-          Edit Metadata ({assigned.length})
         </button>
 
         <button
@@ -1404,31 +1393,6 @@ export function TestBuilderClient({
             </CardBody>
           </Card>
         </form>
-      )}
-
-      {/* Tab 4: Question Metadata & Profiling Table */}
-      {activeTab === 'metadata' && (
-        <TestMetadataTable
-          testId={test.id}
-          testTitle={test.title}
-          initialQuestions={assigned as any}
-          onQuestionsUpdated={(updated) => {
-            setAssigned((prev) =>
-              prev.map((q) => {
-                const match = updated.find((u) => u.questionId === q.questionId);
-                if (!match) return q;
-                return {
-                  ...q,
-                  chapter: match.chapter ?? q.chapter,
-                  topic: match.topic ?? q.topic,
-                  difficulty: match.difficulty ?? q.difficulty,
-                  expectedTimeS: match.expectedTimeS ?? q.expectedTimeS,
-                  metadata: match.metadata ?? q.metadata,
-                };
-              }),
-            );
-          }}
-        />
       )}
 
       {/* Student View Preview Modal */}

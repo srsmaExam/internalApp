@@ -3,6 +3,7 @@ import { TeacherOverviewView } from '../views/TeacherOverviewView';
 import { TeacherPapersView } from '../views/TeacherPapersView';
 import { TeacherPaperIngestView } from '../views/TeacherPaperIngestView';
 import { TeacherPaperVerifyView } from '../views/TeacherPaperVerifyView';
+import { TeacherPaperMetadataView } from '../views/TeacherPaperMetadataView';
 import { TeacherQuestionsView } from '../views/TeacherQuestionsView';
 import { TeacherQuestionEditorView } from '../views/TeacherQuestionEditorView';
 import { TeacherUploadQuestionsView } from '../views/TeacherUploadQuestionsView';
@@ -27,6 +28,7 @@ export async function generateMetadata({
   if (slug[0] === 'papers') {
     if (slug.length === 3 && slug[2] === 'ingest') return { title: 'Ingest Questions & Solutions | SRSMA' };
     if (slug.length === 3 && slug[2] === 'verify') return { title: 'Verify Paper Questions | SRSMA' };
+    if (slug.length === 3 && slug[2] === 'metadata') return { title: 'Paper Metadata & Profiling | SRSMA' };
     return { title: 'Papers | SRSMA' };
   }
   if (slug[0] === 'questions') {
@@ -38,8 +40,7 @@ export async function generateMetadata({
   if (slug[0] === 'feedback') return { title: 'Student Feedback | SRSMA Faculty' };
   if (slug[0] === 'tests') {
     if (slug.length === 2 && slug[1] === 'new') return { title: 'Create New Test | SRSMA' };
-    if (slug.length === 3 && slug[2] === 'analytics') return { title: 'Test Report | SRSMA' };
-    if (slug.length === 3 && slug[2] === 'metadata') return { title: 'Edit Question Metadata | SRSMA' };
+    if (slug.length === 3 && slug[2] === 'analytics') return { title: 'Test Analytics | SRSMA' };
     if (slug.length === 2) return { title: 'Test Builder | SRSMA' };
     return { title: 'Tests | SRSMA' };
   }
@@ -51,7 +52,7 @@ export async function generateMetadata({
   if (slug[0] === 'attempts' && slug.length === 3 && slug[2] === 'result') {
     return { title: 'Student Test Response | SRSMA' };
   }
-  if (slug[0] === 'analytics') return { title: 'Cohort Report | SRSMA' };
+  if (slug[0] === 'analytics') return { title: 'Cohort Analytics | SRSMA' };
   return { title: 'Faculty Portal | SRSMA' };
 }
 
@@ -72,6 +73,7 @@ export default async function TeacherPageDispatcher({
     if (slug.length === 1) return <TeacherPapersView />;
     if (slug.length === 3 && slug[2] === 'ingest') return <TeacherPaperIngestView paperId={slug[1]} />;
     if (slug.length === 3 && slug[2] === 'verify') return <TeacherPaperVerifyView paperId={slug[1]} />;
+    if (slug.length === 3 && slug[2] === 'metadata') return <TeacherPaperMetadataView paperId={slug[1]} />;
   }
 
   // 3. /teacher/questions/*
@@ -96,7 +98,6 @@ export default async function TeacherPageDispatcher({
     if (slug.length === 1) return <TeacherTestsView />;
     if (slug.length === 2 && slug[1] === 'new') return <TeacherCreateTestView />;
     if (slug.length === 3 && slug[2] === 'analytics') return <TeacherTestAnalyticsView testId={slug[1]} />;
-    if (slug.length === 3 && slug[2] === 'metadata') return <TeacherTestBuilderView testId={slug[1]} initialTab="metadata" />;
     if (slug.length === 2) return <TeacherTestBuilderView testId={slug[1]} />;
   }
 
@@ -104,7 +105,6 @@ export default async function TeacherPageDispatcher({
   if (slug[0] === 'students') {
     if (slug.length === 1) return <TeacherStudentsView />;
     if (slug.length === 2) return <TeacherStudentDetailView studentId={slug[1]} />;
-    if (slug.length === 3 && slug[2] === 'analytics') return <TeacherStudentDetailView studentId={slug[1]} initialTab="analytics" />;
     if (slug.length === 3 && slug[2] === 'responses') return <TeacherStudentDetailView studentId={slug[1]} initialTab="responses" />;
     if (slug.length === 4 && slug[2] === 'attempts') return <TeacherStudentAttemptView studentId={slug[1]} attemptId={slug[3]} />;
   }

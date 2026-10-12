@@ -17,10 +17,10 @@
     "seed:admin": "tsx scripts/seed-admin.ts",
     "backup": "tsx scripts/backup.ts",
     "backup:prod": "tsx --env-file=.env scripts/backup-production.ts",
+    "migrate:gdrive": "tsx --env-file=.env scripts/migrate-to-gdrive.ts",
+    "auth:gdrive": "tsx --env-file=.env scripts/get-gdrive-refresh-token.ts",
     "clean-slate:prod": "tsx --env-file=.env scripts/clean-slate.ts",
     "check:db": "tsx --env-file=.env scripts/check-counts.ts",
-    "export:local-paper": "tsx --env-file=.env scripts/export-local-paper.ts",
-    "sync:local-paper": "tsx --env-file=.env scripts/sync-local-paper.ts",
     "attach:metadata": "tsx --env-file=.env scripts/attach-question-metadata.ts",
     "restore": "tsx scripts/restore.ts",
     "reset": "tsx scripts/reset.ts",
@@ -51,6 +51,7 @@
     "react-dom": "^19.2.0",
     "recharts": "^2.15.4",
     "tailwind-merge": "^3.3.1",
+    "xlsx": "^0.18.5",
     "zod": "^3.25.76"
   },
   "devDependencies": {

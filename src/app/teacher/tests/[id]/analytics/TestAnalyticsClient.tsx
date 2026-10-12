@@ -199,7 +199,7 @@ export function TestAnalyticsClient({ testId }: { testId: string }) {
               {data.title}
             </Link>
             <span className="text-slate-300 dark:text-slate-700">/</span>
-            <span className="text-xs font-medium text-slate-700 dark:text-slate-300">Report</span>
+            <span className="text-xs font-medium text-slate-700 dark:text-slate-300">Analytics</span>
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{data.title}</h1>

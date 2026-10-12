@@ -54,7 +54,7 @@ describe('StudentDashboardView - Pre-Unlock vs Unlocked Diagnostic Tests', () =>
 
     db = drizzle(pg, { schema }) as Db;
 
-    // Seed student 1 (report NOT unlocked initially: no whatsappConsent or city)
+    // Seed student 1 (report NOT unlocked initially: no city)
     await db.insert(schema.profiles).values({
       id: student1Id,
       username: 'student1',
@@ -63,7 +63,6 @@ describe('StudentDashboardView - Pre-Unlock vs Unlocked Diagnostic Tests', () =>
       role: 'student',
       isActive: true,
       canLogin: true,
-      whatsappConsent: false,
       city: null,
     });
 
@@ -121,13 +120,9 @@ describe('StudentDashboardView - Pre-Unlock vs Unlocked Diagnostic Tests', () =>
 
     // Welcome banner indicates JEE Online Test Preparation
     expect(html).toContain('JEE Online Test Preparation');
-
-    // Without any completed tests, button must say "View Sample Report"
-    expect(html).toContain('View Sample Report');
-    expect(html).not.toContain('View My Report');
   });
 
-  it('after completing a test: button displays "View My Report"', async () => {
+  it('renders completed tests history after completing a test', async () => {
     // Insert a completed attempt for student 1
     await db.insert(schema.attempts).values({
       id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
@@ -148,10 +143,7 @@ describe('StudentDashboardView - Pre-Unlock vs Unlocked Diagnostic Tests', () =>
     const jsx = await StudentDashboardView();
 
     const html = renderToStaticMarkup(jsx!);
-
-    // With a completed test, button must say "View My Report"
-    expect(html).toContain('View My Report');
-    expect(html).not.toContain('View Sample Report');
+    expect(html).toContain('JEE Online Test Set A');
   });
 });
 

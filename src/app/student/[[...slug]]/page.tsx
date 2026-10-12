@@ -1,6 +1,5 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { StudentDashboardView } from '../views/StudentDashboardView';
-import { StudentAnalyticsView } from '../views/StudentAnalyticsView';
 import { StudentTestInstructionView } from '../views/StudentTestInstructionView';
 import { StudentTestRunnerView } from '../views/StudentTestRunnerView';
 import { StudentAttemptResultView } from '../views/StudentAttemptResultView';
@@ -14,7 +13,6 @@ export async function generateMetadata({
   const { slug } = await params;
   if (!slug || slug.length === 0) return { title: 'My Tests | SRSMA' };
   if (slug[0] === 'about') return { title: 'About SRSMA | Shri Ram Smart Minds Academy' };
-  if (slug[0] === 'analytics') return { title: 'Personal Report | SRSMA' };
   if (slug[0] === 'tests') return { title: 'Test Instructions | SRSMA' };
   if (slug[0] === 'attempts' && slug[2] === 'result') return { title: 'Scorecard & Solutions | SRSMA' };
   if (slug[0] === 'attempts') return { title: 'Test Runner | SRSMA' };
@@ -33,9 +31,9 @@ export default async function StudentPageDispatcher({
     return <StudentDashboardView />;
   }
 
-  // 2. /student/analytics
+  // 2. /student/analytics -> Redirect to dashboard
   if (slug.length === 1 && slug[0] === 'analytics') {
-    return <StudentAnalyticsView />;
+    redirect('/student');
   }
 
   // 3. /student/tests/[id]

@@ -370,7 +370,7 @@ export function TeacherCohortAnalyticsClient() {
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Candidate Ranking &amp; Leaderboard</h2>
             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-              Detailed candidate scores, contact numbers, and direct links to diagnostic evaluation reports.
+              Detailed candidate scores, contact numbers, and direct links to student profiles and responses.
             </p>
           </div>
           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
@@ -448,9 +448,9 @@ export function TeacherCohortAnalyticsClient() {
                     </TableCell>
                     <TableCell>
                       <Link
-                        href={`/teacher/students/${s.studentId}/analytics`}
+                        href={`/teacher/students/${s.studentId}`}
                         className="font-bold text-slate-900 hover:text-brand-600 hover:underline dark:text-slate-100 dark:hover:text-brand-400"
-                        title="View Board Readiness Diagnostic Report"
+                        title="View Student Profile"
                       >
                         {s.fullName}
                       </Link>
@@ -505,12 +505,12 @@ export function TeacherCohortAnalyticsClient() {
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <Link
-                          href={`/teacher/students/${s.studentId}/analytics`}
+                          href={`/teacher/students/${s.studentId}`}
                           className={buttonClass('primary', 'sm')}
-                          title="Open Student's Diagnostic Board Readiness Report"
+                          title="Open Student Profile"
                         >
                           <Sparkles className="mr-1 size-3" />
-                          <span>Report</span>
+                          <span>Profile</span>
                         </Link>
                         <Link
                           href={`/teacher/students/${s.studentId}/responses`}

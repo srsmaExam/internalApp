@@ -18,7 +18,6 @@ const nextConfig = {
       '**/.git/**/*',
       '**/data/**',
       './data/**',
-      '**/LocalPaper/**',
       '**/scripts/**',
       '**/node_modules/@electric-sql/**',
       '**/node_modules/pdf-lib/**',

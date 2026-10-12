@@ -5,9 +5,7 @@ import { getDb } from '@/db/client';
 import { papers, profiles, questions, studentFeedback, tests } from '@/db/schema';
 import { Card, CardBody } from '@/components/ui';
 import { getAllExtractionPrompts, getTruncationRecoveryPrompt } from '@/lib/prompts';
-import { isOtpAuthEnabled } from '@/lib/settings';
 import { ExtractionPromptView } from '../extraction-prompt/ExtractionPromptView';
-import { OtpToggleCard } from './OtpToggleCard';
 
 export async function TeacherOverviewView() {
   const db = await getDb();
@@ -18,7 +16,6 @@ export async function TeacherOverviewView() {
     [studentCount],
     [testCount],
     [feedbackCount],
-    otpAuthEnabled,
   ] = await Promise.all([
     db.select({ n: sql<number>`count(*)` }).from(papers),
     db.select({ n: sql<number>`count(*)` }).from(questions),
@@ -26,7 +23,6 @@ export async function TeacherOverviewView() {
     db.select({ n: sql<number>`count(*)` }).from(profiles).where(eq(profiles.role, 'student')),
     db.select({ n: sql<number>`count(*)` }).from(tests),
     db.select({ n: sql<number>`count(*)` }).from(studentFeedback),
-    isOtpAuthEnabled(),
   ]);
 
   const promptsByKind = getAllExtractionPrompts();
@@ -63,11 +59,6 @@ export async function TeacherOverviewView() {
               </Card>
             </Link>
           ))}
-        </div>
-
-        {/* WhatsApp OTP Authentication Enforcer Toggle */}
-        <div className="mt-6">
-          <OtpToggleCard initialEnabled={otpAuthEnabled} />
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-3">

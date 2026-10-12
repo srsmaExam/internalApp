@@ -2,13 +2,7 @@ import { and, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import { apiSession } from '@/lib/auth';
 import { HttpError, json, withApi } from '@/lib/http';
 import { getDb } from '@/db/client';
-import { attemptAnswers, attempts, profiles, questions, testQuestions, tests } from '@/db/schema';
-import {
-  evaluateDiagnosticReport,
-  getSampleDiagnosticReport,
-  type QuestionMetadataItem,
-  type StudentQuestionResponse,
-} from '@/lib/diagnostic-evaluator';
+import { attemptAnswers, attempts, profiles, questions, tests } from '@/db/schema';
 
 export const GET = withApi(async (req) => {
   const session = await apiSession();
@@ -41,7 +35,6 @@ export const GET = withApi(async (req) => {
           school: profiles.school,
           city: profiles.city,
           classLevel: profiles.classLevel,
-          whatsappConsent: profiles.whatsappConsent,
         })
         .from(profiles)
         .where(eq(profiles.id, queryStudentId));
@@ -52,7 +45,7 @@ export const GET = withApi(async (req) => {
       targetUserId = targetStudent.id;
       targetStudentName = targetStudent.fullName;
       targetGender = targetStudent.gender;
-      isFormFilled = Boolean(targetStudent.whatsappConsent && targetStudent.city);
+      isFormFilled = Boolean(targetStudent.city);
       targetBoard = targetStudent.board ?? null;
       targetSchool = targetStudent.school ?? null;
       targetCity = targetStudent.city ?? null;
@@ -64,7 +57,6 @@ export const GET = withApi(async (req) => {
     targetStudentName = session.fullName || 'Student';
     const [profile] = await db
       .select({
-        whatsappConsent: profiles.whatsappConsent,
         city: profiles.city,
         board: profiles.board,
         school: profiles.school,
@@ -75,7 +67,7 @@ export const GET = withApi(async (req) => {
       .from(profiles)
       .where(eq(profiles.id, session.userId));
 
-    isFormFilled = Boolean(profile && profile.whatsappConsent && profile.city);
+    isFormFilled = Boolean(profile && profile.city);
     isReportUnlocked = isFormFilled;
     targetGender = profile?.gender ?? null;
     targetBoard = profile?.board ?? null;
@@ -121,7 +113,6 @@ export const GET = withApi(async (req) => {
     .orderBy(desc(attempts.submittedAt));
 
   if (studentAttempts.length === 0) {
-    const sampleDiagnosticReport = getSampleDiagnosticReport(targetStudentName);
     return json({
       studentId: targetUserId,
       studentName: targetStudentName,
@@ -146,8 +137,6 @@ export const GET = withApi(async (req) => {
         biology: { correct: 0, attempted: 0, total: 0, accuracy: 0 },
       },
       chapterBreakdown: [],
-      diagnosticReport: null,
-      sampleDiagnosticReport,
     });
   }
 
@@ -249,91 +238,6 @@ export const GET = withApi(async (req) => {
     };
   });
 
-  // Dynamically compute diagnostic evaluation for the latest attempt
-  let diagnosticReport = null;
-  if (studentAttempts.length > 0) {
-    const latestAttempt = studentAttempts[0];
-    const latestQuestions = await db
-      .select({
-        id: questions.id,
-        position: testQuestions.position,
-        subject: questions.subject,
-        chapter: questions.chapter,
-        topic: questions.topic,
-        difficulty: questions.difficulty,
-        expectedTimeS: questions.expectedTimeS,
-        answer: questions.answer,
-        metadata: questions.metadata,
-        isCorrect: attemptAnswers.isCorrect,
-        response: attemptAnswers.response,
-        timeSpentMs: attemptAnswers.timeSpentMs,
-      })
-      .from(testQuestions)
-      .innerJoin(questions, eq(questions.id, testQuestions.questionId))
-      .leftJoin(
-        attemptAnswers,
-        and(
-          eq(attemptAnswers.attemptId, latestAttempt.attemptId),
-          eq(attemptAnswers.questionId, questions.id),
-        ),
-      )
-      .where(eq(testQuestions.testId, latestAttempt.testId))
-      .orderBy(testQuestions.position);
-
-    if (latestQuestions.length > 0) {
-      const metadataList: QuestionMetadataItem[] = latestQuestions.map((q, idx) => {
-        const m = (q.metadata as any) || {};
-        return {
-          qno: q.position ?? idx + 1,
-          subject:
-            q.subject === 'maths'
-              ? 'Maths'
-              : q.subject.charAt(0).toUpperCase() + q.subject.slice(1),
-          chapter: q.chapter || 'General',
-          topic: q.topic || 'General',
-          conceptTested: m.conceptTested || null,
-          prerequisiteConcept: m.prerequisiteConcept || null,
-          difficulty:
-            m.difficultyLabel ||
-            (q.difficulty === 1 ? 'Easy' : q.difficulty === 3 ? 'Difficult' : 'Medium'),
-          primarySkill: m.primarySkill || 'Concept Application',
-          secondarySkill: m.secondarySkill || null,
-          questionStructure: m.questionStructure || 'Direct',
-          visualDependency: m.visualDependency || 'None',
-          expectedTime: m.expectedTime || `${q.expectedTimeS || 60}`,
-          answer:
-            typeof q.answer === 'object' && (q.answer as any)?.key
-              ? (q.answer as any).key
-              : typeof q.answer === 'object' && (q.answer as any)?.value !== undefined
-              ? String((q.answer as any).value)
-              : String(q.answer || 'A'),
-          diagnosticWeight: Number(m.diagnosticWeight || 1),
-        };
-      });
-
-      const responses: StudentQuestionResponse[] = latestQuestions.map((q, idx) => {
-        const isAtt = q.response !== null && q.response !== undefined;
-        const sel =
-          typeof q.response === 'object' && (q.response as any)?.key
-            ? (q.response as any).key
-            : (q.response as any)?.value !== undefined
-            ? String((q.response as any).value)
-            : null;
-        return {
-          qno: q.position ?? idx + 1,
-          attempted: isAtt,
-          selectedOption: sel,
-          timeTakenSeconds: Math.round((q.timeSpentMs ?? 0) / 1000),
-        };
-      });
-
-      diagnosticReport = evaluateDiagnosticReport(metadataList, {
-        studentName: targetStudentName,
-        responses,
-      });
-    }
-  }
-
   return json({
     studentId: targetUserId,
     studentName: targetStudentName,
@@ -354,7 +258,5 @@ export const GET = withApi(async (req) => {
     recentTests,
     subjectBreakdown: subjects,
     chapterBreakdown,
-    diagnosticReport: isReportUnlocked ? diagnosticReport : null,
-    sampleDiagnosticReport: null,
   });
 });

@@ -554,7 +554,15 @@ export function QuestionsListView() {
                       <Badge tone="slate">{q.type.toUpperCase()}</Badge>
                       <Badge tone={STATUS_TONE[q.status]}>{q.status}</Badge>
                       {q.difficulty ? <Badge tone="slate">D{q.difficulty}</Badge> : null}
-                      {q.chapter ? (
+                      {(q.metadata as any)?.phase ? (
+                        <Badge tone="purple">Phase {(q.metadata as any).phase}</Badge>
+                      ) : null}
+                      {q.topic ? (
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                          · {q.topic}
+                          {(q.metadata as any)?.subTopic ? ` › ${(q.metadata as any).subTopic}` : ''}
+                        </span>
+                      ) : q.chapter ? (
                         <span className="text-xs text-slate-500 dark:text-slate-400">· {q.chapter}</span>
                       ) : null}
                     </div>

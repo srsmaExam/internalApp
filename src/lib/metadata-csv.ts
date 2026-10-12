@@ -1,15 +1,30 @@
+import * as XLSX from 'xlsx';
+
 /**
- * Question Metadata CSV parsing, validation, and sample template generator.
- * Aligns with the JEE Online Test question profiling specification.
+ * Question Metadata CSV and Excel parsing, validation, and sample template generator.
+ * Aligns with the JEE Online Test question profiling specification (SampleReport.xlsx).
  */
 
 export interface ParsedMetadataRow {
   qno: number;
+  testPaperId?: string | null;
+  questionType?: string | null; // e.g. "MCQ", "NVQ"
+  topic?: string | null;
+  subTopic?: string | null;
+  difficultyGranular?: number | null; // e.g. 1-10 (6, 7, 8, 9)
+  difficultyCategorical?: string | null; // e.g. "Easy", "Medium", "Hard"
+  phase?: number | null; // e.g. 1, 2, 3
+  etaSeconds?: number | null; // e.g. 180 (seconds)
+
+  // Mapped fields for compatibility with questions table and UI
   subject?: string;
   chapter?: string | null;
-  topic?: string | null;
-  difficulty?: number | null; // 1 = Easy, 2 = Medium, 3 = Difficult
+  difficulty?: number | null;
   difficultyLabel?: string | null;
+  expectedTime?: string | null;
+  expectedTimeS?: number | null;
+
+  // Legacy fields
   primarySkill?: string | null;
   secondarySkill?: string | null;
   cognitiveLevel?: string | null;
@@ -18,8 +33,6 @@ export interface ParsedMetadataRow {
   questionStructure?: string | null;
   visualDependency?: string | null;
   calculationIntensity?: string | null;
-  expectedTime?: string | null; // e.g. "45,60" or "60"
-  expectedTimeS?: number | null;
   diagnosticWeight?: number | null;
 }
 
@@ -27,7 +40,22 @@ export interface MetadataCsvValidationResult {
   validRows: ParsedMetadataRow[];
   errors: Array<{ row: number; field: string; message: string }>;
   warnings: Array<{ row: number; field: string; message: string }>;
+  sheetName?: string;
+  totalSheets?: number;
 }
+
+/**
+ * Standard CSV headers matching SampleReport.xlsx
+ */
+export const CSV_HEADERS = [
+  'Question_Type',
+  'Topic',
+  'Sub_Topic',
+  'Difficulty_Granular',
+  'Difficulty_Categorical',
+  'Phase',
+  'ETA_Seconds',
+] as const;
 
 /**
  * Splits a CSV line respecting quoted commas.
@@ -69,12 +97,12 @@ function escapeCsv(val: string | number | null | undefined): string {
 export function parseDifficulty(raw: string | null | undefined): { level: number; label: string } {
   const norm = (raw ?? '').trim().toLowerCase();
   if (norm === '1' || norm === 'easy') return { level: 1, label: 'Easy' };
-  if (norm === '3' || norm === 'difficult' || norm === 'hard') return { level: 3, label: 'Difficult' };
+  if (norm === '3' || norm === 'difficult' || norm === 'hard') return { level: 3, label: 'Hard' };
   return { level: 2, label: 'Medium' };
 }
 
 export function parseExpectedTime(raw: string | null | undefined): { commaSeparated: string; seconds: number } {
-  if (!raw) return { commaSeparated: '60', seconds: 60 };
+  if (!raw) return { commaSeparated: '180', seconds: 180 };
   const trimmed = raw.trim();
   const match = trimmed.match(/(\d+)\s*[–\-—,]\s*(\d+)/);
   if (match) {
@@ -91,35 +119,17 @@ export function parseExpectedTime(raw: string | null | undefined): { commaSepara
     const s = single[1];
     return { commaSeparated: s, seconds: Number(s) };
   }
-  return { commaSeparated: '60', seconds: 60 };
+  return { commaSeparated: '180', seconds: 180 };
 }
 
-export const CSV_HEADERS = [
-  'Qno',
-  'Subject',
-  'Chapter',
-  'Topic',
-  'Difficulty',
-  'Primary Skill',
-  'Secondary Skill',
-  'Cognitive Level',
-  'Concept Tested',
-  'Prerequisite Concept',
-  'Question Structure',
-  'Visual Dependency',
-  'Calculation Intensity',
-  'Expected Time',
-  'Diagnostic Weight',
-] as const;
-
 /**
- * Generates sample CSV template content with realistic guidelines.
- * If existing questions are provided, fills in their Qno and Subject.
+ * Generates sample CSV template matching SampleReport.xlsx format.
  */
 export function generateSampleMetadataCsv(
   questions?: Array<{
     position: number;
     subject: string;
+    type?: string;
     chapter?: string | null;
     topic?: string | null;
     difficulty?: number | null;
@@ -132,94 +142,143 @@ export function generateSampleMetadataCsv(
   if (questions && questions.length > 0) {
     for (const q of questions) {
       const m = q.metadata || {};
-      const diffLabel =
-        m.difficultyLabel ||
-        (q.difficulty === 1 ? 'Easy' : q.difficulty === 3 ? 'Difficult' : 'Medium');
-      const timeVal = m.expectedTime || (q.expectedTimeS ? String(q.expectedTimeS) : '60');
-      const weight = m.diagnosticWeight != null ? m.diagnosticWeight : 1;
+      const qType = m.questionType || (q.type ? q.type.toUpperCase() : 'MCQ');
+      const topic = m.topic || q.topic || q.chapter || 'Vector Algebra';
+      const subTopic = m.subTopic || '';
+      const diffGranular = m.difficultyGranular != null ? m.difficultyGranular : (q.difficulty ?? 7);
+      const diffCat = m.difficultyCategorical || m.difficultyLabel || (diffGranular > 7 ? 'Hard' : diffGranular < 5 ? 'Easy' : 'Medium');
+      const phase = m.phase != null ? m.phase : (diffGranular >= 8 ? 3 : diffGranular >= 6 ? 2 : 1);
+      const etaSeconds = m.etaSeconds != null ? m.etaSeconds : (q.expectedTimeS ?? 180);
 
       lines.push(
         [
-          q.position,
-          escapeCsv(q.subject),
-          escapeCsv(q.chapter || ''),
-          escapeCsv(q.topic || ''),
-          escapeCsv(diffLabel),
-          escapeCsv(m.primarySkill || 'Concept Application'),
-          escapeCsv(m.secondarySkill || 'Calculation'),
-          escapeCsv(m.cognitiveLevel || 'Application'),
-          escapeCsv(m.conceptTested || ''),
-          escapeCsv(m.prerequisiteConcept || ''),
-          escapeCsv(m.questionStructure || 'Direct'),
-          escapeCsv(m.visualDependency || 'None'),
-          escapeCsv(m.calculationIntensity || 'Medium'),
-          escapeCsv(timeVal),
-          weight,
+          escapeCsv(qType),
+          escapeCsv(topic),
+          escapeCsv(subTopic),
+          diffGranular,
+          escapeCsv(diffCat),
+          phase,
+          etaSeconds,
         ].join(','),
       );
     }
   } else {
-    // Default 3 sample rows
-    lines.push(
-      [
-        1,
-        'Maths',
-        'Real Numbers',
-        'HCF & LCM',
-        'Easy',
-        'Concept Application',
-        'Calculation',
-        'Application',
-        'Relationship between HCF and LCM',
-        'HCF/LCM concept',
-        'Direct',
-        'None',
-        'Low',
-        '45,60',
-        1,
-      ].join(','),
-    );
-    lines.push(
-      [
-        2,
-        'Physics',
-        'Light',
-        'Reflection & Refraction',
-        'Medium',
-        'Analytical Reasoning',
-        'Formula Recall',
-        'Analysis',
-        'Mirror formula and magnification',
-        'Sign convention',
-        'Multi-step',
-        'Low',
-        'Medium',
-        '60,90',
-        2,
-      ].join(','),
-    );
-    lines.push(
-      [
-        3,
-        'Chemistry',
-        'Chemical Reactions',
-        'Redox Reactions',
-        'Difficult',
-        'Conceptual Foundation',
-        'Elimination',
-        'Evaluation',
-        'Oxidizing and reducing agents identification',
-        'Oxidation states',
-        'Direct',
-        'None',
-        'Low',
-        '60,90',
-        3,
-      ].join(','),
-    );
+    // Default 3 sample rows matching profiling spec without Test_Paper_ID
+    lines.push(['MCQ', '3D Geometry', 'Distance & Lines', 7, 'Medium', 2, 180].join(','));
+    lines.push(['MCQ', 'Statistics', 'Altered Data', 7, 'Medium', 2, 180].join(','));
+    lines.push(['NVQ', 'Vector Algebra', 'STP Max Value', 7, 'Medium', 2, 150].join(','));
   }
 
   return lines.join('\r\n');
+}
+
+/**
+ * Generates an Excel workbook (.xlsx binary as Uint8Array) matching SampleReport.xlsx format.
+ */
+export function generateMetadataExcel(
+  questions?: Array<{
+    position: number;
+    subject: string;
+    type?: string;
+    chapter?: string | null;
+    topic?: string | null;
+    difficulty?: number | null;
+    expectedTimeS?: number | null;
+    metadata?: any;
+  }>,
+): Uint8Array {
+  const rows: (string | number)[][] = [
+    [...CSV_HEADERS],
+  ];
+
+  if (questions && questions.length > 0) {
+    for (const q of questions) {
+      const m = q.metadata || {};
+      const qType = m.questionType || (q.type ? q.type.toUpperCase() : 'MCQ');
+      const topic = m.topic || q.topic || q.chapter || 'Vector Algebra';
+      const subTopic = m.subTopic || '';
+      const diffGranular = m.difficultyGranular != null ? m.difficultyGranular : (q.difficulty ?? 7);
+      const diffCat = m.difficultyCategorical || m.difficultyLabel || (diffGranular > 7 ? 'Hard' : diffGranular < 5 ? 'Easy' : 'Medium');
+      const phase = m.phase != null ? m.phase : (diffGranular >= 8 ? 3 : diffGranular >= 6 ? 2 : 1);
+      const etaSeconds = m.etaSeconds != null ? m.etaSeconds : (q.expectedTimeS ?? 180);
+
+      rows.push([
+        qType,
+        topic,
+        subTopic,
+        diffGranular,
+        diffCat,
+        phase,
+        etaSeconds,
+      ]);
+    }
+  } else {
+    rows.push(['MCQ', '3D Geometry', 'Distance & Lines', 7, 'Medium', 2, 180]);
+    rows.push(['MCQ', 'Statistics', 'Altered Data', 7, 'Medium', 2, 180]);
+    rows.push(['NVQ', 'Vector Algebra', 'STP Max Value', 7, 'Medium', 2, 150]);
+  }
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Set column widths for better readability in Excel
+  ws['!cols'] = [
+    { wch: 15 }, // Question_Type
+    { wch: 22 }, // Topic
+    { wch: 26 }, // Sub_Topic
+    { wch: 18 }, // Difficulty_Granular
+    { wch: 22 }, // Difficulty_Categorical
+    { wch: 10 }, // Phase
+    { wch: 14 }, // ETA_Seconds
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Metadata');
+  const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+  return new Uint8Array(buffer);
+}
+
+/**
+ * Parses uploaded Excel binary buffer (.xlsx or .xls) into MetadataCsvValidationResult
+ */
+export function parseMetadataExcel(buffer: ArrayBuffer | Uint8Array): MetadataCsvValidationResult {
+  try {
+    const wb = XLSX.read(buffer, { type: 'array' });
+    if (!wb.SheetNames || wb.SheetNames.length === 0) {
+      return {
+        validRows: [],
+        errors: [{ row: 0, field: 'excel', message: 'Excel workbook contains no sheets.' }],
+        warnings: [],
+      };
+    }
+
+    // Try to find a sheet matching "Metadata", "Questions", "SampleReport", or fallback to the first sheet
+    const targetSheetName =
+      wb.SheetNames.find((s) => /metadata|questions|samplereport|sheet1/i.test(s)) ||
+      wb.SheetNames[0];
+
+    const sheet = wb.Sheets[targetSheetName];
+    if (!sheet) {
+      return {
+        validRows: [],
+        errors: [{ row: 0, field: 'excel', message: `Sheet "${targetSheetName}" not found.` }],
+        warnings: [],
+      };
+    }
+
+    const csvText = XLSX.utils.sheet_to_csv(sheet);
+    const parsed = parseMetadataCsv(csvText);
+    return {
+      ...parsed,
+      sheetName: targetSheetName,
+      totalSheets: wb.SheetNames.length,
+    };
+  } catch (err: any) {
+    return {
+      validRows: [],
+      errors: [{ row: 0, field: 'excel', message: `Failed to parse Excel file: ${err.message}` }],
+      warnings: [],
+    };
+  }
 }
 
 /**
@@ -248,13 +307,27 @@ export function parseMetadataCsv(csvText: string): MetadataCsvValidationResult {
     headerMap.set(norm, idx);
   });
 
-  // Verify at least Qno column exists
-  const qnoIdx = headerMap.get('qno') ?? headerMap.get('q') ?? headerMap.get('questionnumber') ?? headerMap.get('number');
-  if (qnoIdx === undefined) {
+  // Check headers: must contain at least Qno OR (Topic / Question_Type / Sub_Topic)
+  const qnoIdx =
+    headerMap.get('qno') ??
+    headerMap.get('q') ??
+    headerMap.get('questionnumber') ??
+    headerMap.get('number');
+
+  const hasNewMetadataHeaders =
+    headerMap.has('questiontype') ||
+    headerMap.has('qtype') ||
+    headerMap.has('type') ||
+    headerMap.has('testpaperid') ||
+    headerMap.has('topic') ||
+    headerMap.has('subtopic') ||
+    headerMap.has('difficultygranular');
+
+  if (qnoIdx === undefined && !hasNewMetadataHeaders) {
     errors.push({
       row: 1,
       field: 'header',
-      message: 'Header must contain "Qno" or "Question Number" column.',
+      message: 'Header must contain metadata columns such as "Topic", "Sub_Topic", "Question_Type", or "Qno".',
     });
     return { validRows, errors, warnings };
   }
@@ -271,22 +344,29 @@ export function parseMetadataCsv(csvText: string): MetadataCsvValidationResult {
   };
 
   const seenQnos = new Set<number>();
+  let sequentialQno = 1;
 
   for (let i = 1; i < lines.length; i++) {
     const rowNum = i + 1;
     const cells = parseCsvLine(lines[i]);
     if (cells.length === 0 || (cells.length === 1 && !cells[0])) continue;
 
-    const rawQno = cells[qnoIdx]?.trim();
-    const qnoNum = Number(rawQno?.replace(/^Q/i, ''));
-
-    if (!rawQno || isNaN(qnoNum) || qnoNum <= 0) {
-      errors.push({
-        row: rowNum,
-        field: 'Qno',
-        message: `Invalid question number "${rawQno}". Must be a positive number like 1 or Q1.`,
-      });
-      continue;
+    let qnoNum: number;
+    if (qnoIdx !== undefined) {
+      const rawQno = cells[qnoIdx]?.trim();
+      const parsed = Number(rawQno?.replace(/^Q/i, ''));
+      if (!rawQno || isNaN(parsed) || parsed <= 0) {
+        errors.push({
+          row: rowNum,
+          field: 'Qno',
+          message: `Invalid question number "${rawQno}". Must be a positive number like 1 or Q1.`,
+        });
+        continue;
+      }
+      qnoNum = parsed;
+    } else {
+      // Automatic sequential Qno matching row position (e.g. SampleReport.xlsx)
+      qnoNum = sequentialQno++;
     }
 
     if (seenQnos.has(qnoNum)) {
@@ -298,10 +378,18 @@ export function parseMetadataCsv(csvText: string): MetadataCsvValidationResult {
     }
     seenQnos.add(qnoNum);
 
-    const subject = getCol(cells, ['subject', 'subj']);
-    const chapter = getCol(cells, ['chapter', 'chap']);
-    const topic = getCol(cells, ['topic']);
-    const rawDiff = getCol(cells, ['difficulty', 'diff', 'difficultylabel']);
+    // Extract columns
+    const testPaperId = getCol(cells, ['testpaperid', 'paperid', 'papercode', 'testid', 'paper', 'testpaper']);
+    const rawQuestionType = getCol(cells, ['questiontype', 'qtype', 'type', 'questionkind']);
+    const topic = getCol(cells, ['topic', 'chapter', 'mainconcept']);
+    const subTopic = getCol(cells, ['subtopic', 'subconcept', 'sub']);
+
+    const rawDiffGranular = getCol(cells, ['difficultygranular', 'diffgranular', 'granular', 'difficulty', 'diff']);
+    const rawDiffCat = getCol(cells, ['difficultycategorical', 'diffcategorical', 'difficultylabel', 'categorical']);
+    const rawPhase = getCol(cells, ['phase', 'phaseno', 'phaselevel']);
+    const rawEta = getCol(cells, ['etaseconds', 'eta', 'expectedtime', 'time', 'timetaken']);
+
+    // Legacy fields fallback
     const primarySkill = getCol(cells, ['primaryskill', 'skill', 'skillprimary']);
     const secondarySkill = getCol(cells, ['secondaryskill', 'skillsecondary']);
     const cognitiveLevel = getCol(cells, ['cognitivelevel', 'cognitive', 'bloom']);
@@ -310,34 +398,78 @@ export function parseMetadataCsv(csvText: string): MetadataCsvValidationResult {
     const questionStructure = getCol(cells, ['questionstructure', 'structure']);
     const visualDependency = getCol(cells, ['visualdependency', 'visual']);
     const calculationIntensity = getCol(cells, ['calculationintensity', 'calculation']);
-    const rawExpectedTime = getCol(cells, ['expectedtime', 'time', 'timetaken']);
     const rawWeight = getCol(cells, ['diagnosticweight', 'weight']);
 
-    const { level: diffLevel, label: diffLabel } = parseDifficulty(rawDiff);
-    const { commaSeparated: timeStr, seconds: timeS } = parseExpectedTime(rawExpectedTime);
-
-    let weightNum: number | null = null;
-    if (rawWeight) {
-      const parsedWeight = Number(rawWeight);
-      if (!isNaN(parsedWeight) && parsedWeight > 0) {
-        weightNum = parsedWeight;
-      } else {
-        warnings.push({
-          row: rowNum,
-          field: 'Diagnostic Weight',
-          message: `Invalid diagnostic weight "${rawWeight}", defaulted to 1.`,
-        });
-        weightNum = 1;
+    // Parse granular difficulty (1-10)
+    let difficultyGranular: number | null = null;
+    if (rawDiffGranular) {
+      const parsedG = Number(rawDiffGranular);
+      if (!isNaN(parsedG) && parsedG >= 1 && parsedG <= 10) {
+        difficultyGranular = Math.round(parsedG);
+      } else if (rawDiffGranular.toLowerCase() === 'easy') {
+        difficultyGranular = 3;
+      } else if (rawDiffGranular.toLowerCase() === 'medium') {
+        difficultyGranular = 6;
+      } else if (rawDiffGranular.toLowerCase() === 'hard' || rawDiffGranular.toLowerCase() === 'difficult') {
+        difficultyGranular = 8;
       }
     }
 
+    // Parse categorical difficulty
+    let difficultyCategorical: string | null = null;
+    if (rawDiffCat) {
+      const norm = rawDiffCat.trim().toLowerCase();
+      if (norm === 'easy') difficultyCategorical = 'Easy';
+      else if (norm === 'hard' || norm === 'difficult') difficultyCategorical = 'Hard';
+      else difficultyCategorical = 'Medium';
+    } else if (difficultyGranular !== null) {
+      difficultyCategorical = difficultyGranular >= 8 ? 'Hard' : difficultyGranular <= 4 ? 'Easy' : 'Medium';
+    } else {
+      difficultyCategorical = 'Medium';
+    }
+
+    // Parse phase (1, 2, 3)
+    let phaseNum: number | null = null;
+    if (rawPhase) {
+      const parsedP = Number(rawPhase.replace(/[^0-9]/g, ''));
+      if (!isNaN(parsedP) && parsedP >= 1 && parsedP <= 10) {
+        phaseNum = parsedP;
+      }
+    }
+    if (phaseNum === null) {
+      phaseNum = (difficultyGranular ?? 6) >= 8 ? 3 : (difficultyGranular ?? 6) >= 6 ? 2 : 1;
+    }
+
+    // Parse ETA seconds
+    let etaSeconds: number | null = null;
+    if (rawEta) {
+      const { seconds } = parseExpectedTime(rawEta);
+      etaSeconds = seconds;
+    } else {
+      etaSeconds = 180;
+    }
+
+    const questionType = rawQuestionType ? rawQuestionType.toUpperCase() : null;
+
     validRows.push({
       qno: qnoNum,
-      subject: subject ?? undefined,
-      chapter: chapter ?? null,
+      testPaperId: testPaperId ?? null,
+      questionType: questionType ?? null,
       topic: topic ?? null,
-      difficulty: diffLevel,
-      difficultyLabel: diffLabel,
+      subTopic: subTopic ?? null,
+      difficultyGranular: difficultyGranular ?? 7,
+      difficultyCategorical: difficultyCategorical ?? 'Medium',
+      phase: phaseNum,
+      etaSeconds: etaSeconds ?? 180,
+
+      // Mapped fields
+      chapter: topic ?? null,
+      difficulty: difficultyGranular ?? 7,
+      difficultyLabel: difficultyCategorical ?? 'Medium',
+      expectedTime: String(etaSeconds ?? 180),
+      expectedTimeS: etaSeconds ?? 180,
+
+      // Preserved legacy fields
       primarySkill: primarySkill ?? null,
       secondarySkill: secondarySkill ?? null,
       cognitiveLevel: cognitiveLevel ?? null,
@@ -346,9 +478,7 @@ export function parseMetadataCsv(csvText: string): MetadataCsvValidationResult {
       questionStructure: questionStructure ?? null,
       visualDependency: visualDependency ?? null,
       calculationIntensity: calculationIntensity ?? null,
-      expectedTime: timeStr,
-      expectedTimeS: timeS,
-      diagnosticWeight: weightNum ?? 1,
+      diagnosticWeight: rawWeight ? Number(rawWeight) || 1 : 1,
     });
   }
 

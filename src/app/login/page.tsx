@@ -38,7 +38,7 @@ export default function LoginPage() {
           <div className="mt-6 rounded-xl bg-white px-4 py-3 text-xs leading-relaxed text-slate-500 ring-1 ring-slate-200 transition-colors dark:bg-slate-900 dark:text-slate-400 dark:ring-slate-800">
             <p className="font-semibold text-slate-700 dark:text-slate-300">Quick Demo Access</p>
             <p className="mt-1">
-              Enter any 10-digit WhatsApp number
+              Enter any 10-digit mobile number
             </p>
           </div>
         ) : null}

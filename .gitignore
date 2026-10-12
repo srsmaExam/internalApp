@@ -7,6 +7,8 @@
 .env.local
 .env*.local
 .env.production
+*service-account*.json
+google-service-account.json
 
 # Build artefacts
 /node_modules/

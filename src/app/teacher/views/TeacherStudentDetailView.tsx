@@ -7,7 +7,7 @@ export async function TeacherStudentDetailView({
   initialTab,
 }: {
   studentId: string;
-  initialTab?: 'analytics' | 'responses';
+  initialTab?: 'responses' | 'feedback';
 }) {
   await requireTeacher();
   return (

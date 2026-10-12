@@ -4,10 +4,9 @@ import { getDb } from '@/db/client';
 import { profiles } from '@/db/schema';
 import { normalizePhone } from '@/lib/auth';
 import { HttpError, json, withApi } from '@/lib/http';
-import { isOtpAuthEnabled } from '@/lib/settings';
 
 const CheckPhoneSchema = z.object({
-  phone: z.string().min(1, 'WhatsApp number is required'),
+  phone: z.string().min(1, 'Phone number is required'),
   countryCode: z.string().optional().default('+91'),
 });
 
@@ -15,12 +14,11 @@ export const POST = withApi(async (req) => {
   const body = await req.json().catch(() => ({}));
   const parsed = CheckPhoneSchema.safeParse(body);
   if (!parsed.success) {
-    throw new HttpError(400, 'invalid_request', 'Please enter a valid WhatsApp number.');
+    throw new HttpError(400, 'invalid_request', 'Please enter a valid phone number.');
   }
 
   const { phone, countryCode } = parsed.data;
   const { fullPhone, cleanDigits } = normalizePhone(countryCode, phone);
-  const otpAuthEnabled = await isOtpAuthEnabled();
 
   const db = await getDb();
   const matches = await db
@@ -31,7 +29,6 @@ export const POST = withApi(async (req) => {
       role: profiles.role,
       isActive: profiles.isActive,
       canLogin: profiles.canLogin,
-      phoneVerified: profiles.phoneVerified,
     })
     .from(profiles)
     .where(
@@ -42,7 +39,7 @@ export const POST = withApi(async (req) => {
     throw new HttpError(
       409,
       'phone_ambiguous',
-      'More than one account is registered to this WhatsApp number. Please contact your administrator.',
+      'More than one account is registered to this phone number. Please contact your administrator.',
     );
   }
 
@@ -53,7 +50,7 @@ export const POST = withApi(async (req) => {
       throw new HttpError(403, 'account_disabled', 'Your account has been deactivated. Please contact your administrator.');
     }
     if (user.role !== 'student') {
-      throw new HttpError(403, 'teacher_portal_required', 'This WhatsApp number belongs to a faculty account. Please sign in via the faculty portal at /SRSMA.');
+      throw new HttpError(403, 'teacher_portal_required', 'This phone number belongs to a faculty account. Please sign in via the faculty portal at /SRSMA.');
     }
 
     // A student needs to submit their name if it still matches the default auto-generated "Student XXXX" or is missing class
@@ -64,8 +61,6 @@ export const POST = withApi(async (req) => {
       ok: true,
       exists: true,
       requiresDetails,
-      otpAuthEnabled,
-      phoneVerified: Boolean(user.phoneVerified),
       fullName: isDefaultName ? '' : user.fullName,
       classLevel: user.classLevel ?? '10',
     });
@@ -75,8 +70,6 @@ export const POST = withApi(async (req) => {
   return json({
     ok: true,
     exists: false,
-    otpAuthEnabled,
-    phoneVerified: false,
     requiresDetails: true,
     classLevel: '10',
   });

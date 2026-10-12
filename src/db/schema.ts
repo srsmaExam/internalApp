@@ -69,12 +69,9 @@ export const profiles = pgTable('profiles', {
   isProvisional: boolean('is_provisional').notNull().default(false),
   city: text('city'),
   board: text('board'),
-  whatsappConsent: boolean('whatsapp_consent').notNull().default(false),
   classLevel: text('class_level'),
   gender: text('gender'),
   school: text('school'),
-  whatsappContactClicked: boolean('whatsapp_contact_clicked').notNull().default(false),
-  whatsappEnrollClicked: boolean('whatsapp_enroll_clicked').notNull().default(false),
   phoneVerified: boolean('phone_verified').notNull().default(false),
 });
 
@@ -112,6 +109,16 @@ export type QuestionAnswer =
   | { min: number; max: number };
 
 export type QuestionMetadata = {
+  testPaperId?: string | null;
+  questionType?: string | null; // e.g. "MCQ", "NVQ"
+  topic?: string | null;
+  subTopic?: string | null;
+  difficultyGranular?: number | null; // e.g. 1 to 10 (6, 7, 8, 9)
+  difficultyCategorical?: string | null; // e.g. "Easy", "Medium", "Hard"
+  phase?: number | null; // e.g. 1, 2, 3
+  etaSeconds?: number | null; // e.g. 180 (seconds)
+
+  // Backward compatibility:
   primarySkill?: string | null;
   secondarySkill?: string | null;
   cognitiveLevel?: string | null;
@@ -120,9 +127,9 @@ export type QuestionMetadata = {
   questionStructure?: string | null;
   visualDependency?: string | null;
   calculationIntensity?: string | null;
-  expectedTime?: string | null; // e.g. "45,60" for 45-60 seconds
+  expectedTime?: string | null;
   diagnosticWeight?: number | null;
-  difficultyLabel?: string | null; // e.g. "Easy", "Medium", "Difficult"
+  difficultyLabel?: string | null;
   [key: string]: unknown;
 };
 
@@ -373,25 +380,6 @@ export const studentFeedback = pgTable(
   ],
 );
 
-export const phoneOtps = pgTable(
-  'phone_otps',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    phone: text('phone').notNull(),
-    otpHash: text('otp_hash').notNull(),
-    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-    attempts: smallint('attempts').notNull().default(0),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [index('phone_otps_phone_idx').on(t.phone)],
-);
-
-export const appSettings = pgTable('app_settings', {
-  key: text('key').primaryKey(),
-  value: text('value').notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
-
 export type Profile = typeof profiles.$inferSelect;
 export type Paper = typeof papers.$inferSelect;
 export type Question = typeof questions.$inferSelect;
@@ -399,7 +387,6 @@ export type QuestionImage = typeof questionImages.$inferSelect;
 export type StoredFile = typeof storedFiles.$inferSelect;
 export type StudentLeadAction = typeof studentLeadActions.$inferSelect;
 export type StudentFeedback = typeof studentFeedback.$inferSelect;
-export type PhoneOtp = typeof phoneOtps.$inferSelect;
-export type AppSetting = typeof appSettings.$inferSelect;
+
 
 

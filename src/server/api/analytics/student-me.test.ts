@@ -58,7 +58,6 @@ describe('GET /api/analytics/student/me - Teacher & Student Access', () => {
       role: 'student',
       isActive: true,
       canLogin: true,
-      whatsappConsent: false,
       city: null,
     });
 
@@ -71,7 +70,6 @@ describe('GET /api/analytics/student/me - Teacher & Student Access', () => {
       role: 'student',
       isActive: true,
       canLogin: true,
-      whatsappConsent: true,
       city: 'Delhi',
     });
 

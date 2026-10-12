@@ -14,6 +14,7 @@ import {
   ImagePlus,
   Navigation,
   Search,
+  SlidersHorizontal,
   Sparkles,
   Trash2,
   Upload,
@@ -462,6 +463,15 @@ export function PaperVerifyStudio({
               <Sparkles className="size-3" /> All Images Done
             </span>
           )}
+
+          <Link
+            href={`/teacher/papers/${paper.id}/metadata`}
+            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            title="Edit question profiling and metadata table for this paper"
+          >
+            <SlidersHorizontal className="size-3.5 text-brand-600 dark:text-brand-400" />
+            <span>Metadata Table</span>
+          </Link>
         </div>
       </header>
 
@@ -693,20 +703,28 @@ export function PaperVerifyStudio({
                             <Sparkles className="size-2.5 mr-0.5 inline text-emerald-600 dark:text-emerald-300" /> Sol. Verified
                           </Badge>
                         )}
-                        {q.difficulty && <Badge>{q.metadata?.difficultyLabel ?? `D${q.difficulty}`}</Badge>}
-                        {q.metadata?.diagnosticWeight != null && (
-                          <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300" title="Diagnostic Weight">
-                            Weight {q.metadata.diagnosticWeight}
+                        {q.metadata?.phase && (
+                          <span className="inline-flex items-center gap-1 rounded bg-purple-50 px-2 py-0.5 text-[11px] font-semibold text-purple-700 dark:bg-purple-950/60 dark:text-purple-300" title={`Phase ${q.metadata.phase}`}>
+                            Phase {q.metadata.phase}
                           </span>
                         )}
-                        {q.metadata?.primarySkill && (
-                          <span className="inline-flex items-center gap-1 rounded bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300" title={`Primary Skill: ${q.metadata.primarySkill}`}>
-                            🎯 {q.metadata.primarySkill}
-                          </span>
+                        {(q.metadata?.difficultyCategorical || q.difficulty) && (
+                          <Badge
+                            tone={
+                              q.metadata?.difficultyCategorical === 'Hard'
+                                ? 'red'
+                                : q.metadata?.difficultyCategorical === 'Easy'
+                                  ? 'green'
+                                  : 'amber'
+                            }
+                          >
+                            {q.metadata?.difficultyCategorical ?? q.metadata?.difficultyLabel ?? `D${q.difficulty}`}
+                            {q.metadata?.difficultyGranular ? ` (${q.metadata.difficultyGranular}/10)` : ''}
+                          </Badge>
                         )}
-                        {q.metadata?.cognitiveLevel && (
-                          <span className="inline-flex items-center gap-1 rounded bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700 dark:bg-sky-950/60 dark:text-sky-300" title={`Cognitive Level: ${q.metadata.cognitiveLevel}`}>
-                            🧠 {q.metadata.cognitiveLevel}
+                        {q.metadata?.etaSeconds != null && (
+                          <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300" title="ETA in Seconds">
+                            ⏱️ {q.metadata.etaSeconds}s
                           </span>
                         )}
                       </div>
@@ -744,11 +762,12 @@ export function PaperVerifyStudio({
                     </div>
 
                     {/* Profiling and Concept Info */}
-                    {(q.chapter || q.topic || q.metadata?.conceptTested) && (
+                    {(q.topic || q.chapter || q.metadata?.subTopic || q.metadata?.conceptTested) && (
                       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-                        {q.chapter && (
+                        {(q.topic || q.chapter) && (
                           <span className="font-semibold text-slate-800 dark:text-slate-200">
-                            {q.chapter}{q.topic ? ` › ${q.topic}` : ''}
+                            {q.topic || q.chapter}
+                            {q.metadata?.subTopic ? ` › ${q.metadata.subTopic}` : ''}
                           </span>
                         )}
                         {q.metadata?.conceptTested && (
@@ -756,9 +775,9 @@ export function PaperVerifyStudio({
                             Concept: <strong className="text-slate-700 dark:text-slate-200">{q.metadata.conceptTested}</strong>
                           </span>
                         )}
-                        {q.metadata?.expectedTime && (
+                        {(q.metadata?.etaSeconds || q.metadata?.expectedTime) && (
                           <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                            Time: {q.metadata.expectedTime}s
+                            ETA: {q.metadata?.etaSeconds ?? q.metadata?.expectedTime}s
                           </span>
                         )}
                       </div>
@@ -1294,13 +1313,20 @@ function InlineQuestionEditor({
   const [expectedTimeS, setExpectedTimeS] = useState<number | null>(question.expectedTimeS);
   const [chapter, setChapter] = useState(question.chapter ?? '');
   const [topic, setTopic] = useState(question.topic ?? '');
-  const [primarySkill, setPrimarySkill] = useState(question.metadata?.primarySkill ?? '');
-  const [secondarySkill, setSecondarySkill] = useState(question.metadata?.secondarySkill ?? '');
-  const [cognitiveLevel, setCognitiveLevel] = useState(question.metadata?.cognitiveLevel ?? '');
-  const [conceptTested, setConceptTested] = useState(question.metadata?.conceptTested ?? '');
-  const [prerequisiteConcept, setPrerequisiteConcept] = useState(question.metadata?.prerequisiteConcept ?? '');
-  const [expectedTime, setExpectedTime] = useState(question.metadata?.expectedTime ?? '');
-  const [diagnosticWeight, setDiagnosticWeight] = useState<number | ''>(question.metadata?.diagnosticWeight ?? '');
+  const [questionType, setQuestionType] = useState(
+    question.metadata?.questionType ?? (question.type === 'integer' ? 'NVQ' : 'MCQ'),
+  );
+  const [subTopic, setSubTopic] = useState(question.metadata?.subTopic ?? '');
+  const [difficultyGranular, setDifficultyGranular] = useState<number | ''>(
+    question.metadata?.difficultyGranular ?? (question.difficulty ?? 7),
+  );
+  const [difficultyCategorical, setDifficultyCategorical] = useState(
+    question.metadata?.difficultyCategorical ?? question.metadata?.difficultyLabel ?? 'Medium',
+  );
+  const [phase, setPhase] = useState<number | ''>(question.metadata?.phase ?? 2);
+  const [etaSeconds, setEtaSeconds] = useState<number | ''>(
+    question.metadata?.etaSeconds ?? (question.expectedTimeS ?? 180),
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1310,13 +1336,15 @@ function InlineQuestionEditor({
     try {
       const newMetadata = {
         ...(question.metadata ?? {}),
-        primarySkill: primarySkill.trim() || null,
-        secondarySkill: secondarySkill.trim() || null,
-        cognitiveLevel: cognitiveLevel.trim() || null,
-        conceptTested: conceptTested.trim() || null,
-        prerequisiteConcept: prerequisiteConcept.trim() || null,
-        expectedTime: expectedTime.trim() || null,
-        diagnosticWeight: diagnosticWeight !== '' ? Number(diagnosticWeight) : null,
+        questionType: questionType || null,
+        topic: topic.trim() || null,
+        subTopic: subTopic.trim() || null,
+        difficultyGranular: difficultyGranular !== '' ? Number(difficultyGranular) : null,
+        difficultyCategorical: difficultyCategorical || null,
+        phase: phase !== '' ? Number(phase) : null,
+        etaSeconds: etaSeconds !== '' ? Number(etaSeconds) : null,
+        difficultyLabel: difficultyCategorical || null,
+        expectedTime: etaSeconds !== '' ? String(etaSeconds) : null,
       };
 
       const res = await fetch(`/api/questions/${question.id}`, {
@@ -1326,15 +1354,15 @@ function InlineQuestionEditor({
           updatedAt: new Date(question.updatedAt).toISOString(),
           sourcePage,
           subject,
-          type,
+          type: questionType === 'NVQ' ? 'integer' : 'mcq',
           body,
-          options: type === 'mcq' ? options : [],
+          options: (questionType === 'NVQ' ? 'integer' : 'mcq') === 'mcq' ? options : [],
           answer,
           solution: solution || null,
-          difficulty,
-          expectedTimeS,
+          difficulty: difficultyGranular !== '' ? Number(difficultyGranular) : difficulty,
+          expectedTimeS: etaSeconds !== '' ? Number(etaSeconds) : expectedTimeS,
           topic: topic || null,
-          chapter: chapter || null,
+          chapter: topic || null,
           metadata: newMetadata,
         }),
       });
@@ -1494,99 +1522,95 @@ function InlineQuestionEditor({
       {/* Profiling & Metadata Section */}
       <div className="space-y-3 rounded-md border border-slate-200/80 bg-white/60 p-3 dark:border-slate-800 dark:bg-slate-900/60">
         <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-          Question Profiling & Metadata
+          Question Profiling & Metadata (SampleReport.xlsx)
         </h5>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
-            <Label>Chapter</Label>
-            <Input
-              value={chapter}
-              onChange={(e) => setChapter(e.target.value)}
-              placeholder="e.g. Real Numbers"
-              className="text-xs"
-            />
+            <Label>Question Type</Label>
+            <Select
+              value={questionType}
+              onChange={(e) => setQuestionType(e.target.value)}
+              className="text-xs py-1"
+            >
+              <option value="MCQ">MCQ</option>
+              <option value="NVQ">NVQ</option>
+            </Select>
           </div>
           <div>
             <Label>Topic</Label>
             <Input
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g. HCF & LCM"
+              placeholder="e.g. 3D Geometry"
+              className="text-xs"
+            />
+          </div>
+          <div>
+            <Label>Sub-Topic</Label>
+            <Input
+              value={subTopic}
+              onChange={(e) => setSubTopic(e.target.value)}
+              placeholder="e.g. Distance & Lines"
               className="text-xs"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           <div>
-            <Label>Primary Skill</Label>
-            <Input
-              value={primarySkill}
-              onChange={(e) => setPrimarySkill(e.target.value)}
-              placeholder="e.g. Concept Application"
-              className="text-xs"
-            />
-          </div>
-          <div>
-            <Label>Cognitive Level</Label>
-            <Input
-              value={cognitiveLevel}
-              onChange={(e) => setCognitiveLevel(e.target.value)}
-              placeholder="e.g. Apply, Analyse"
-              className="text-xs"
-            />
-          </div>
-          <div>
-            <Label>Diagnostic Weight</Label>
+            <Label>Difficulty (Granular 1-10)</Label>
             <Input
               type="number"
               min={1}
-              max={5}
-              value={diagnosticWeight}
-              onChange={(e) => setDiagnosticWeight(e.target.value ? Number(e.target.value) : '')}
-              placeholder="e.g. 1, 2, 3"
-              className="text-xs"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <Label>Concept Tested</Label>
-            <Input
-              value={conceptTested}
-              onChange={(e) => setConceptTested(e.target.value)}
-              placeholder="e.g. Relationship between HCF and LCM"
+              max={10}
+              value={difficultyGranular}
+              onChange={(e) => {
+                const val = e.target.value ? Number(e.target.value) : '';
+                setDifficultyGranular(val);
+                if (typeof val === 'number') {
+                  if (val >= 8) setDifficultyCategorical('Hard');
+                  else if (val <= 4) setDifficultyCategorical('Easy');
+                  else setDifficultyCategorical('Medium');
+                }
+              }}
+              placeholder="e.g. 7"
               className="text-xs"
             />
           </div>
           <div>
-            <Label>Prerequisite Concept</Label>
-            <Input
-              value={prerequisiteConcept}
-              onChange={(e) => setPrerequisiteConcept(e.target.value)}
-              placeholder="e.g. HCF/LCM concept"
-              className="text-xs"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <Label>Secondary Skill</Label>
-            <Input
-              value={secondarySkill}
-              onChange={(e) => setSecondarySkill(e.target.value)}
-              placeholder="e.g. Calculation"
-              className="text-xs"
-            />
+            <Label>Difficulty (Categorical)</Label>
+            <Select
+              value={difficultyCategorical}
+              onChange={(e) => setDifficultyCategorical(e.target.value)}
+              className="text-xs py-1"
+            >
+              <option value="Easy">Easy</option>
+              <option value="Medium">Medium</option>
+              <option value="Hard">Hard</option>
+            </Select>
           </div>
           <div>
-            <Label>Expected Time Range (s, comma-separated)</Label>
+            <Label>Phase (1, 2, 3)</Label>
+            <Select
+              value={phase}
+              onChange={(e) => setPhase(Number(e.target.value))}
+              className="text-xs py-1"
+            >
+              <option value={1}>Phase 1</option>
+              <option value={2}>Phase 2</option>
+              <option value={3}>Phase 3</option>
+            </Select>
+          </div>
+          <div>
+            <Label>ETA (Seconds)</Label>
             <Input
-              value={expectedTime}
-              onChange={(e) => setExpectedTime(e.target.value)}
-              placeholder="e.g. 45,60"
+              type="number"
+              step={15}
+              min={15}
+              max={600}
+              value={etaSeconds}
+              onChange={(e) => setEtaSeconds(e.target.value ? Number(e.target.value) : '')}
+              placeholder="e.g. 180"
               className="text-xs"
             />
           </div>

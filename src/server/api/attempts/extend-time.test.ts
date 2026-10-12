@@ -175,34 +175,4 @@ describe('Time Extension and Auto-Submit Features', () => {
     const [row] = await db.select().from(schema.attempts).where(eq(schema.attempts.id, attemptId));
     expect(row.status).toBe('auto_submitted');
   });
-
-  it('saves gender and school in profiles when submitting report details', async () => {
-    const { POST: reportDetails } = await import('../student/report-details');
-
-    const req = new Request('http://localhost/api/student/report-details', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        city: 'Hyderabad',
-        board: 'CBSE Board',
-        gender: 'Female',
-        school: 'St. Ann’s High School',
-        whatsappConsent: true,
-        attemptId,
-      }),
-    });
-
-    const res = await reportDetails(req, {} as never);
-    const body = await res.json();
-
-    expect(res.status).toBe(200);
-    expect(body.ok).toBe(true);
-
-    // Verify stored in profiles table
-    const [prof] = await db.select().from(schema.profiles).where(eq(schema.profiles.id, studentId));
-    expect(prof.gender).toBe('Female');
-    expect(prof.school).toBe('St. Ann’s High School');
-    expect(prof.city).toBe('Hyderabad');
-    expect(prof.board).toBe('CBSE Board');
-  });
 });

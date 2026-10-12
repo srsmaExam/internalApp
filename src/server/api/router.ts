@@ -36,12 +36,8 @@ import { NextResponse } from 'next/server';
 import * as authLogin from './auth/login';
 import * as authLogout from './auth/logout';
 import * as authCheckPhone from './auth/check-phone';
-import * as authPhoneSendOtp from './auth/phone/send-otp';
-import * as authPhoneVerifyOtp from './auth/phone/verify-otp';
-import * as studentReportDetails from './student/report-details';
 import * as studentLeadAction from './student/lead-action';
 import * as studentFeedback from './student/feedback';
-import * as teacherSettings from './teacher/settings';
 
 // 2. Cron Handlers
 import * as cronSweep from './cron/sweep-expired';
@@ -72,6 +68,7 @@ import * as papers from './papers/index';
 import * as papersById from './papers/by-id';
 import * as papersIngest from './papers/ingest';
 import * as papersPdf from './papers/pdf';
+import * as papersMetadata from './papers/metadata';
 
 // 7. Exam & Test Handlers
 import * as tests from './tests/index';
@@ -136,13 +133,8 @@ export function matchRoute(slug: string[]): RouteMatch | null {
     }
     // /api/student/*
     if (s0 === 'student') {
-      if (s1 === 'report-details') return { handler: studentReportDetails, params: {}, pattern: '/api/student/report-details' };
       if (s1 === 'lead-action') return { handler: studentLeadAction, params: {}, pattern: '/api/student/lead-action' };
       if (s1 === 'feedback') return { handler: studentFeedback, params: {}, pattern: '/api/student/feedback' };
-    }
-    // /api/teacher/*
-    if (s0 === 'teacher') {
-      if (s1 === 'settings') return { handler: teacherSettings, params: {}, pattern: '/api/teacher/settings' };
     }
     // /api/cron/*
     if (s0 === 'cron' && s1 === 'sweep-expired') {
@@ -181,11 +173,6 @@ export function matchRoute(slug: string[]): RouteMatch | null {
   }
 
   if (len === 3) {
-    // /api/auth/phone/*
-    if (s0 === 'auth' && s1 === 'phone') {
-      if (s2 === 'send-otp') return { handler: authPhoneSendOtp, params: {}, pattern: '/api/auth/phone/send-otp' };
-      if (s2 === 'verify-otp') return { handler: authPhoneVerifyOtp, params: {}, pattern: '/api/auth/phone/verify-otp' };
-    }
     // /api/analytics/student/me
     if (s0 === 'analytics' && s1 === 'student' && s2 === 'me') {
       return { handler: analyticsStudentMe, params: {}, pattern: '/api/analytics/student/me' };
@@ -204,6 +191,7 @@ export function matchRoute(slug: string[]): RouteMatch | null {
     if (s0 === 'papers') {
       if (s2 === 'ingest') return { handler: papersIngest, params: { id: s1 }, pattern: '/api/papers/[id]/ingest' };
       if (s2 === 'pdf') return { handler: papersPdf, params: { id: s1 }, pattern: '/api/papers/[id]/pdf' };
+      if (s2 === 'metadata') return { handler: papersMetadata, params: { id: s1 }, pattern: '/api/papers/[id]/metadata' };
     }
     // /api/tests/[id]/*
     if (s0 === 'tests') {
@@ -288,12 +276,8 @@ export const ALL_REGISTERED_ROUTES: { pattern: string; verbs: string[] }[] = [
   { pattern: '/api/auth/login', verbs: ['POST'] },
   { pattern: '/api/auth/logout', verbs: ['POST'] },
   { pattern: '/api/auth/check-phone', verbs: ['POST'] },
-  { pattern: '/api/auth/phone/send-otp', verbs: ['POST'] },
-  { pattern: '/api/auth/phone/verify-otp', verbs: ['POST'] },
-  { pattern: '/api/student/report-details', verbs: ['POST'] },
   { pattern: '/api/student/lead-action', verbs: ['POST'] },
   { pattern: '/api/student/feedback', verbs: ['DELETE', 'GET', 'POST'] },
-  { pattern: '/api/teacher/settings', verbs: ['GET', 'PATCH'] },
   { pattern: '/api/cron/sweep-expired', verbs: ['GET', 'POST'] },
   { pattern: '/api/batches', verbs: ['GET'] },
   { pattern: '/api/students', verbs: ['GET', 'POST'] },
@@ -314,6 +298,7 @@ export const ALL_REGISTERED_ROUTES: { pattern: string; verbs: string[] }[] = [
   { pattern: '/api/papers/[id]', verbs: ['DELETE', 'GET'] },
   { pattern: '/api/papers/[id]/ingest', verbs: ['POST'] },
   { pattern: '/api/papers/[id]/pdf', verbs: ['GET'] },
+  { pattern: '/api/papers/[id]/metadata', verbs: ['GET', 'PUT'] },
   { pattern: '/api/tests', verbs: ['GET', 'POST'] },
   { pattern: '/api/tests/[id]', verbs: ['DELETE', 'GET', 'PATCH'] },
   { pattern: '/api/tests/[id]/attempts', verbs: ['POST'] },

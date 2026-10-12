@@ -6,6 +6,15 @@ import { eq, sql } from 'drizzle-orm';
 import { getDb } from '@/db/client';
 import { storedFiles } from '@/db/schema';
 import { imageKey, paperKey, resolveDataPath } from './paths';
+import {
+  isGoogleDriveConfigured,
+  uploadToGoogleDrive,
+  downloadFromGoogleDrive,
+  getGoogleDriveMetadata,
+  findFileInGoogleDrive,
+  deleteFromGoogleDrive,
+  deletePrefixFromGoogleDrive,
+} from './gdrive';
 
 export type FileRecord = {
   buffer: Buffer;
@@ -32,7 +41,7 @@ function isServerlessRuntime(): boolean {
 
 /**
  * Bounded in-memory LRU cache for serverless warm lambdas.
- * Prevents re-querying Supabase database for the same images across requests.
+ * Prevents re-querying Google Drive or database for the same images across requests.
  */
 const MEMORY_CACHE_MAX_BYTES = 25 * 1024 * 1024; // 25 MB
 let currentCacheBytes = 0;
@@ -65,9 +74,7 @@ function evictMemoryCache(key: string) {
 }
 
 /**
- * Persists a file into the database (stored_files) and mirrors to disk if writable.
- * This guarantees persistence in serverless environments (Vercel) while maintaining
- * fast local development behavior.
+ * Persists a file into Google Drive (or local disk/Postgres fallback).
  */
 export async function saveBufferWithHash(
   relativeKey: string,
@@ -84,40 +91,54 @@ export async function saveBufferWithHash(
     sha256,
   });
 
-  // 1. Persist to PostgreSQL database
-  try {
-    const db = await getDb();
-    await db
-      .insert(storedFiles)
-      .values({
-        key: relativeKey,
-        data: bytes.toString('base64'),
-        contentType,
-        sizeBytes: bytes.length,
-        sha256,
-      })
-      .onConflictDoUpdate({
-        target: storedFiles.key,
-        set: {
-          data: bytes.toString('base64'),
-          contentType,
-          sizeBytes: bytes.length,
-          sha256,
-          createdAt: new Date(),
-        },
-      });
-  } catch (dbErr) {
-    console.warn('[storage] failed to write to database stored_files:', dbErr);
+  let savedToCloud = false;
+
+  // 1. Try Google Drive (2 TB AI Pro Storage)
+  if (isGoogleDriveConfigured()) {
+    try {
+      await uploadToGoogleDrive(relativeKey, bytes, contentType, sha256);
+      savedToCloud = true;
+    } catch (gdriveErr) {
+      console.warn('[storage] failed to write to Google Drive:', gdriveErr);
+    }
   }
 
-  // 2. Attempt to mirror to disk (works on local PC; skipped in serverless / Cloudflare)
+  // 2. Attempt to mirror to disk (local PC development; skipped in serverless)
   if (!isServerlessRuntime()) {
     try {
       const absPath = resolveDataPath(relativeKey);
       await fsp.mkdir(path.dirname(absPath), { recursive: true });
       await fsp.writeFile(absPath, bytes);
     } catch {
-      // Disk write skipped on read-only serverless filesystems
+      // Disk write skipped on read-only environments
+    }
+  }
+
+  // 3. PostgreSQL fallback: only if Google Drive is NOT configured and running in serverless without disk
+  if (!savedToCloud && isServerlessRuntime()) {
+    try {
+      const db = await getDb();
+      await db
+        .insert(storedFiles)
+        .values({
+          key: relativeKey,
+          data: bytes.toString('base64'),
+          contentType,
+          sizeBytes: bytes.length,
+          sha256,
+        })
+        .onConflictDoUpdate({
+          target: storedFiles.key,
+          set: {
+            data: bytes.toString('base64'),
+            contentType,
+            sizeBytes: bytes.length,
+            sha256,
+            createdAt: new Date(),
+          },
+        });
+    } catch (dbErr) {
+      console.warn('[storage] failed to write to database stored_files fallback:', dbErr);
     }
   }
 
@@ -130,7 +151,7 @@ export function paperAbsPath(relativeKey: string): string {
 
 /**
  * Reads metadata (content-type, size, sha256) WITHOUT downloading the large binary/base64 payload.
- * Crucial for HTTP conditional requests (ETag / If-None-Match) to avoid Supabase DB egress.
+ * Crucial for HTTP conditional requests (ETag / If-None-Match) to avoid bandwidth egress.
  */
 export async function getFileMetadata(relativeKey: string): Promise<FileMetadata | null> {
   const cached = memoryCache.get(relativeKey);
@@ -138,6 +159,7 @@ export async function getFileMetadata(relativeKey: string): Promise<FileMetadata
     return { contentType: cached.contentType, size: cached.size, sha256: cached.sha256 };
   }
 
+  // 1. Try local disk first (fastest for local development)
   if (!isServerlessRuntime()) {
     try {
       const abs = resolveDataPath(relativeKey);
@@ -150,7 +172,6 @@ export async function getFileMetadata(relativeKey: string): Promise<FileMetadata
             : ext === '.pdf'
               ? 'application/pdf'
               : 'application/octet-stream';
-        // For disk files, read buffer to get sha256 (local dev is fast)
         const buffer = await fsp.readFile(abs);
         const sha256 = createHash('sha256').update(buffer).digest('hex');
         return { contentType, size: stat.size, sha256 };
@@ -160,6 +181,23 @@ export async function getFileMetadata(relativeKey: string): Promise<FileMetadata
     }
   }
 
+  // 2. Try Google Drive metadata
+  if (isGoogleDriveConfigured()) {
+    try {
+      const meta = await getGoogleDriveMetadata(relativeKey);
+      if (meta) {
+        return {
+          contentType: meta.mimeType || 'application/octet-stream',
+          size: meta.size,
+          sha256: meta.sha256 || '',
+        };
+      }
+    } catch (err) {
+      console.warn('[storage] Google Drive metadata read error for key:', relativeKey, err);
+    }
+  }
+
+  // 3. Fallback to PostgreSQL database (for backwards compatibility during migration)
   try {
     const db = await getDb();
     const [row] = await db
@@ -187,7 +225,7 @@ export async function getFileMetadata(relativeKey: string): Promise<FileMetadata
 }
 
 /**
- * Reads a file record from memory cache, disk cache, or database.
+ * Reads a file record from memory cache, disk cache, Google Drive, or database.
  */
 export async function readFileRecord(relativeKey: string): Promise<FileRecord | null> {
   const cached = memoryCache.get(relativeKey);
@@ -195,7 +233,7 @@ export async function readFileRecord(relativeKey: string): Promise<FileRecord | 
     return cached;
   }
 
-  // 1. Try disk first (fastest for local development)
+  // 1. Try local disk first (fastest for local development)
   if (!isServerlessRuntime()) {
     try {
       const abs = resolveDataPath(relativeKey);
@@ -218,7 +256,27 @@ export async function readFileRecord(relativeKey: string): Promise<FileRecord | 
     }
   }
 
-  // 2. Fall back to PostgreSQL database
+  // 2. Try Google Drive download
+  if (isGoogleDriveConfigured()) {
+    try {
+      const file = await downloadFromGoogleDrive(relativeKey);
+      if (file) {
+        const sha256 = file.sha256 || createHash('sha256').update(file.buffer).digest('hex');
+        const rec = {
+          buffer: file.buffer,
+          contentType: file.contentType,
+          size: file.size,
+          sha256,
+        };
+        putMemoryCache(relativeKey, rec);
+        return rec;
+      }
+    } catch (err) {
+      console.warn('[storage] Google Drive download error for key:', relativeKey, err);
+    }
+  }
+
+  // 3. Fallback to PostgreSQL database (for backwards compatibility)
   try {
     const db = await getDb();
     const [row] = await db.select().from(storedFiles).where(eq(storedFiles.key, relativeKey)).limit(1);
@@ -265,6 +323,16 @@ export async function hasFile(relativeKey: string): Promise<boolean> {
 export async function deleteIfExists(relativeKey: string): Promise<void> {
   evictMemoryCache(relativeKey);
 
+  // 1. Delete from Google Drive
+  if (isGoogleDriveConfigured()) {
+    try {
+      await deleteFromGoogleDrive(relativeKey);
+    } catch (gdriveErr) {
+      console.warn('[storage] Google Drive delete error for key:', relativeKey, gdriveErr);
+    }
+  }
+
+  // 2. Delete from database if present
   try {
     const db = await getDb();
     await db.delete(storedFiles).where(eq(storedFiles.key, relativeKey));
@@ -272,6 +340,7 @@ export async function deleteIfExists(relativeKey: string): Promise<void> {
     // DB delete failed or table not found
   }
 
+  // 3. Delete from disk if present
   if (!isServerlessRuntime()) {
     try {
       const abs = resolveDataPath(relativeKey);
@@ -298,6 +367,16 @@ export async function deleteQuestionImageDir(questionId: string): Promise<void> 
     if (k.startsWith(prefix)) evictMemoryCache(k);
   }
 
+  // 1. Delete from Google Drive
+  if (isGoogleDriveConfigured()) {
+    try {
+      await deletePrefixFromGoogleDrive(prefix);
+    } catch (gdriveErr) {
+      console.warn('[storage] Google Drive prefix delete error for:', prefix, gdriveErr);
+    }
+  }
+
+  // 2. Delete from database
   try {
     const db = await getDb();
     await db.delete(storedFiles).where(sql`${storedFiles.key} LIKE ${`images/${questionId}/%`}`);
@@ -305,6 +384,7 @@ export async function deleteQuestionImageDir(questionId: string): Promise<void> 
     // Ignore
   }
 
+  // 3. Delete from disk
   if (!isServerlessRuntime()) {
     try {
       await fsp.rm(resolveDataPath(`images/${questionId}`), { recursive: true, force: true });
@@ -315,4 +395,3 @@ export async function deleteQuestionImageDir(questionId: string): Promise<void> 
 }
 
 export { paperKey };
-

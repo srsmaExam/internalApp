@@ -29,7 +29,7 @@ import { BRAND } from '@/config/branding';
 export const metadata = {
   title: 'JEE Online Test | Shri Ram Smart Minds Academy',
   description:
-    'A Diagnostic Test For Class 10 Students. 20 Questions | 20 Minutes in Mathematics & Science. Take the challenge and get your FREE Strengths & Improvement Report!',
+    'A Diagnostic Test For Class 10 Students. 20 Questions | 20 Minutes in Mathematics & Science. Take the challenge and get your FREE Scorecard & Worked Solutions!',
   keywords: [
     'JEE Online Test',
     'Class 10 Diagnostic Test',
@@ -189,7 +189,7 @@ export default function BoardChallengePage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <BarChart3 className="size-4 shrink-0 text-blue-600 dark:text-blue-400" />
-                      <span>Instant 5-Page Diagnostic Report</span>
+                      <span>Instant Scorecard &amp; Solutions</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Trophy className="size-4 shrink-0 text-amber-500 dark:text-amber-400" />
@@ -255,7 +255,7 @@ export default function BoardChallengePage() {
                     </div>
                     <div className="flex items-center gap-1.5">
                       <BarChart3 className="size-3.5 shrink-0 text-blue-400" />
-                      <span>5-Page Report</span>
+                      <span>Instant Solutions</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Trophy className="size-3.5 shrink-0 text-amber-400" />
@@ -307,15 +307,15 @@ export default function BoardChallengePage() {
                 </div>
               </div>
 
-              {/* Item 4: Free Strengths & Improvement Report */}
+              {/* Item 4: Free Solutions & Scorecard */}
               <div className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition hover:border-amber-400 hover:shadow-lg dark:border-slate-800/90 dark:bg-slate-900/80 dark:hover:border-amber-400/50 dark:hover:bg-slate-800/90">
                 <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-400/20 text-amber-600 ring-1 ring-amber-400/40 dark:text-amber-400">
                   <Trophy className="size-6" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black text-slate-900 sm:text-xl dark:text-white">FREE Diagnostic Report</h2>
+                  <h2 className="text-lg font-black text-slate-900 sm:text-xl dark:text-white">FREE Scorecard &amp; Solutions</h2>
                   <p className="mt-1 text-sm leading-snug text-slate-600 sm:text-base dark:text-slate-300">
-                    Receive an instant personalized report revealing your strengths, blind spots, and key areas to gain marks!
+                    Receive instant worked derivations, faculty step-by-step solutions, and your score breakdown!
                   </p>
                 </div>
               </div>
@@ -412,7 +412,7 @@ export default function BoardChallengePage() {
                       If you answered <span className="font-black text-amber-400">yes</span> to even one of these, you don’t need more hours—you need to know where you are losing marks.
                     </p>
                     <p className="mt-2 text-sm text-slate-300 sm:text-base">
-                      Take the JEE Online Test to pinpoint your score leaks and get your instant 5-page report.
+                      Take the JEE Online Test to check your performance and get instant solutions.
                     </p>
                   </div>
 
@@ -443,7 +443,7 @@ export default function BoardChallengePage() {
             <div className="relative mx-auto max-w-5xl px-4 sm:px-6">
               <div className="text-center">
                 <h2 className="text-3xl font-black uppercase tracking-tight text-white sm:text-4xl md:text-5xl">
-                  What Your 5-Page Personalized Diagnostic Report Delivers
+                  What Your Performance Scorecard &amp; Worked Solutions Deliver
                 </h2>
               </div>
 
@@ -599,10 +599,10 @@ export default function BoardChallengePage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="text-lg font-black text-white sm:text-xl">
-                        Step 2: Instant 5-Page Diagnostic Report
+                        Step 2: Instant Scorecard &amp; Worked Solutions
                       </h3>
                       <p className="mt-1.5 text-sm leading-relaxed text-slate-300 sm:text-base">
-                        Get your Board Readiness Index, skill profile, and time-management report immediately upon submission.
+                        Get your score breakdown, question derivations, and faculty solutions immediately upon submission.
                       </p>
                     </div>
                   </div>
@@ -693,7 +693,7 @@ export default function BoardChallengePage() {
                     <span className="text-slate-600">•</span>
                     <div className="flex items-center gap-1.5">
                       <BarChart3 className="size-4 text-blue-400" />
-                      <span>Instant Reports Access</span>
+                      <span>Instant Solutions Access</span>
                     </div>
                   </div>
                 </div>

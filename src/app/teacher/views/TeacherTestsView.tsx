@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { desc, eq, sql } from 'drizzle-orm';
-import { BarChart3, Clock, HelpCircle, Plus, SlidersHorizontal, Users } from 'lucide-react';
+import { BarChart3, Clock, HelpCircle, Plus, Users } from 'lucide-react';
 import { getDb } from '@/db/client';
 import { attempts, testQuestions, tests } from '@/db/schema';
 import { Badge, buttonClass, Card, CardBody, EmptyState } from '@/components/ui';
@@ -115,20 +115,11 @@ export async function TeacherTestsView() {
                   </Link>
 
                   <Link
-                    href={`/teacher/tests/${t.id}?tab=metadata`}
-                    className={buttonClass('secondary', 'sm')}
-                    title="Edit question profiling, skills, cognitive levels, and diagnostic weights"
-                  >
-                    <SlidersHorizontal className="mr-1 size-3.5" />
-                    Edit Metadata
-                  </Link>
-
-                  <Link
                     href={`/teacher/tests/${t.id}/analytics`}
                     className={buttonClass('secondary', 'sm')}
                   >
                     <BarChart3 className="mr-1 size-3.5" />
-                    Report
+                    Analytics
                   </Link>
 
                   <TeacherTestsClientActions

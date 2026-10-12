@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
-import { Columns2, FileText, Trash2, UploadCloud } from 'lucide-react';
+import { Columns2, FileText, SlidersHorizontal, Trash2, UploadCloud } from 'lucide-react';
 import { Alert, Badge, Button, buttonClass, Card, CardBody, ConfirmDialog, EmptyState, Input, Label, Spinner, useToast } from '@/components/ui';
 import type { Paper } from '@/db/schema';
 
@@ -106,13 +106,23 @@ export function PapersView({ initialPapers }: { initialPapers: Paper[] }) {
                 </div>
 
                 <div className="flex flex-col gap-2 pt-1">
-                  <Link
-                    href={`/teacher/papers/${paper.id}/verify`}
-                    className={buttonClass('primary', 'sm', 'w-full')}
-                  >
-                    <Columns2 className="size-3.5" />
-                    Verify Questions (Split View)
-                  </Link>
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/teacher/papers/${paper.id}/verify`}
+                      className={buttonClass('primary', 'sm', 'flex-1')}
+                    >
+                      <Columns2 className="size-3.5" />
+                      Verify (Split View)
+                    </Link>
+                    <Link
+                      href={`/teacher/papers/${paper.id}/metadata`}
+                      className={buttonClass('secondary', 'sm')}
+                      title="Edit question profiling and metadata for this paper"
+                    >
+                      <SlidersHorizontal className="mr-1 size-3.5" />
+                      Metadata
+                    </Link>
+                  </div>
 
                   <div className="flex gap-2">
                     <Link

@@ -111,18 +111,6 @@ export async function StudentDashboardView() {
               </h1>
               
             </div>
-
-            {hasCompletedTests ? (
-              <Link href="/student/analytics" className={buttonClass('accent', 'md')}>
-                <Award className="mr-1.5 size-4" />
-                View My Report
-              </Link>
-            ) : (
-              <Link href="/student/analytics?sample=true" className={buttonClass('accent', 'md')}>
-                <FileText className="mr-1.5 size-4" />
-                View Sample Report
-              </Link>
-            )}
           </div>
         </div>
 
